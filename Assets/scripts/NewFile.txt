@@ -1,0 +1,3649 @@
+﻿using System;
+using System.Collections;
+using System.Collections.Generic;
+using TMPro;
+using UnityEditor;
+using UnityEngine;
+using UnityEngine.UI;
+
+
+public enum gameState {START, PLAYERONE, FROZENBLUE, FROZENRED, PLAYERTWO, END}
+
+public class lineScript : MonoBehaviour
+{
+    private LineRenderer line;
+    private Vector2 firstPos;
+    private Vector3 mousePos;
+    private Material mats;
+    private int currLines = 0;
+    private float distance = 0;
+    private Dictionary<int, int> blueTiles = new Dictionary<int, int>();
+    private Dictionary<int, int> redTiles = new Dictionary<int, int>();
+    private bool turnTaken = true;
+    public playerHUD playerHUD;
+    public Sprite redImage;
+    public Sprite blueImage;
+    public gameState state;
+    public Sprite blueSquare;
+    public GameObject blueTile;
+    public GameObject redTile;
+    public GameObject redFrozen;
+    public GameObject blueFrozen;
+    [SerializeField] GameObject popUp;
+    private GameObject go;
+    private GameObject tileCount;
+    public GameObject boardArea;
+    public Button yesButton;
+    public Button noButton;
+    private int currTiles = 0;
+    private bool result;
+    private string GOclicked;
+    private GameObject tileClicked;
+    public long[,] positions = new long[6, 6] {{0,0,0,0,0,0},
+                                               {0,0,0,0,0,0 },
+                                               {0,0,0,0,0,0 },
+                                               {0,0,0,0,0,0 },
+                                               {0,0,0,0,0,0 },
+                                               {0,0,0,0,0,0 }};
+    public int[] position = new int[6 * 6];
+
+
+    public void populate()
+    {
+        for (int x = 0; x < 36; x++)
+        {
+            position[x] = 0;
+        }
+    }
+
+    /*public GameObject popUpBox;
+    public Animator animator;
+    public TextMeshProUGUI popUpText;
+
+    public void PopUp(string text)
+    {
+        popUpBox.SetActive(true);
+        popUpText.text = text;
+        animator.SetTrigger("NO1");
+    }*/
+
+    public void addTo(Vector2 first, Vector2 second)
+    {
+        int ycoord = (int)(first.y + 2.5);
+        int xcoord = (int)(first.x + 2.5);
+
+
+        int coordinates = (int)first.y * 6;
+        for (int i = 0; i < first.x; i++)
+        {
+            position[coordinates + i] = 1;
+        }
+    }
+
+
+    private Vector2 GetSquareClicked()
+    {
+
+        Vector2 clickPos = new Vector2(Input.mousePosition.x, Input.mousePosition.y);
+        Vector2 worldPos = Camera.main.ScreenToWorldPoint(clickPos);
+        Vector2 gridPos = SnapToGrid(worldPos);
+        return gridPos;
+    }
+
+    private Vector2 SnapToGrid(Vector2 rawWorldPos)
+    {
+        float newX = Mathf.Sign(rawWorldPos.x) * (Mathf.Abs((int)rawWorldPos.x) + 0.5f);
+        float newY = Mathf.Sign(rawWorldPos.y) * (Mathf.Abs((int)rawWorldPos.y) + 0.5f);
+        return new Vector2(newX, newY);
+    }
+
+    public GameObject GetGameObjectClicked()
+    {
+        return tileClicked;
+    }
+
+    public int getBlueOne()
+    {
+        return blueTiles[1];
+    }
+    public int getBlueTwo()
+    {
+        return blueTiles[2];
+    }
+    public int getBlueThree()
+    {
+        return blueTiles[3];
+    }
+    public int getBlueFour()
+    {
+        return blueTiles[4];
+    }
+
+    public int getRedOne()
+    {
+        return redTiles[1];
+    }
+    public int getRedTwo()
+    {
+        return redTiles[2];
+    }
+    public int getRedThree()
+    {
+        return redTiles[3];
+    }
+    public int getRedFour()
+    {
+        return redTiles[4];
+    }
+
+
+
+    void Setup()
+    {
+        blueTiles.Add(1, 2);
+        blueTiles.Add(2, 3);
+        blueTiles.Add(3, 3);
+        blueTiles.Add(4, 1);
+        redTiles.Add(1, 2);
+        redTiles.Add(3, 3);
+        redTiles.Add(2, 2);
+        redTiles.Add(4, 1);
+
+        populate();
+
+        playerHUD.SetHUD(getBlueFour(), getBlueThree(), getBlueTwo(), getBlueOne(), blueImage);
+        state = gameState.PLAYERONE;
+
+    }
+
+
+
+
+    // Start is called before the first frame update
+    void Start()
+    {
+        Setup();
+    }
+
+
+    /*private void OnMouseDown()
+    {
+        //gets correct grid position
+        firstPos = GetSquareClicked();
+        RaycastHit2D hit = Physics2D.Raycast(firstPos, Vector2.zero);
+        if (hit.collider != null)
+        {
+
+            //Debug.Log(hit.collider.gameObject.name);
+            if (hit.collider.gameObject.name.Contains("blue"))
+            {
+                Debug.Log("you hit blue");
+                //CreateWizard();
+                popUp.SetActive(true);
+
+                //Debug.Log(pop.name);
+                tileClicked = GameObject.Find(hit.collider.gameObject.name);
+                boardArea.SetActive(false);
+
+                //StartCoroutine(freeze());
+                //Destroy(go);
+
+            }
+            else if (hit.collider.gameObject.name.Contains("red"))
+            {
+                Debug.Log("you hit red");
+            }
+            else
+            {
+                if (firstPos.x < 3.5 && firstPos.x > -3.5 && firstPos.y < 3.5 && firstPos.y > -3.5)
+                {
+                    if (line == null)
+                    {
+                        createLine();
+                    }
+                    mousePos = GetSquareClicked();
+                    mousePos.z = 4;
+                    line.SetPosition(0, mousePos);
+                    line.SetPosition(1, mousePos);
+                }
+            }
+        }
+    }
+
+    private void OnMouseUp()
+    {
+        mousePos = GetSquareClicked();
+        mousePos.z = 4;
+        validInputs();
+        tileCheck(distance);
+        line = null;
+        line = null;
+        currLines++;
+        if (turnTaken == true)
+        {
+            if (state == gameState.PLAYERONE)
+            {
+                playerHUD.SetHUD(getRedFour(), getRedThree(), getRedTwo(), getRedOne(), redImage);
+                state = gameState.PLAYERTWO;
+            }
+            else
+            {
+                playerHUD.SetHUD(getBlueFour(), getBlueThree(), getBlueTwo(), getBlueOne(), blueImage);
+                state = gameState.PLAYERONE;
+            }
+        }
+    }
+
+    private void OnMouseEnter()
+    {
+        mousePos = GetSquareClicked();
+        mousePos.z = 4;
+        validInputs();
+    }*/
+
+    public string gameObjectHit(Vector2 coordinates)
+    {
+        RaycastHit2D hit = Physics2D.Raycast(coordinates, Vector2.zero);
+        return hit.collider.gameObject.name;
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+        //when mouse is clicked 
+        if (Input.GetMouseButtonDown(0))
+        {
+
+            firstPos = GetSquareClicked();
+            GOclicked = gameObjectHit(firstPos);
+            if (GOclicked.Contains("blue"))
+            {
+                if (state == gameState.PLAYERONE)
+                {
+                    Debug.Log("you hit blue");
+                    //CreateWizard();
+                    popUp.SetActive(true);
+
+                    //Debug.Log(pop.name);
+                    tileClicked = GameObject.Find(GOclicked);
+                    enabled = false;
+                }
+            } else if (GOclicked.Contains("red"))
+            {
+                if (state == gameState.PLAYERTWO)
+                {
+                    //CreateWizard();
+                    Debug.Log("you hit red");
+                    popUp.SetActive(true);
+
+                    //Debug.Log(pop.name);
+                    tileClicked = GameObject.Find(GOclicked);
+                    enabled = false;
+                }
+            } else if (GOclicked.Contains("Frozen")){
+
+            }
+            else
+            {
+                if (firstPos.x < 3.5 && firstPos.x > -3.5 && firstPos.y < 3.5 && firstPos.y > -3.5)
+                {
+                    if (line == null)
+                    {
+                        createLine();
+                    }
+                    mousePos = GetSquareClicked();
+                    mousePos.z = 4;
+                    line.SetPosition(0, mousePos);
+                    line.SetPosition(1, mousePos);
+                }
+            }
+        }
+        else if(Input.GetMouseButtonUp(0) && line)
+        {
+            mousePos = GetSquareClicked();
+            mousePos.z = 1;
+            validInputs();
+            tileCheck(distance);
+            line = null;
+            line = null;
+            currLines++;
+            if(turnTaken == true)
+            {
+                if (state == gameState.PLAYERONE || state == gameState.FROZENBLUE)
+                {
+                    playerHUD.SetHUD(getRedFour(), getRedThree(), getRedTwo(), getRedOne(), redImage);
+                    state = gameState.PLAYERTWO;
+                }
+                else
+                {
+                    playerHUD.SetHUD(getBlueFour(), getBlueThree(), getBlueTwo(), getBlueOne(), blueImage);
+                    state = gameState.PLAYERONE;
+                }
+            }
+        }else if(Input.GetMouseButton(0) && line)
+        {
+            mousePos = GetSquareClicked();
+            mousePos.z = 1;
+            validInputs();
+
+        }
+    }
+
+    void createLine()
+    {
+        line = new GameObject("Line" + currLines).AddComponent<LineRenderer>();
+        line.positionCount = 2;
+        line.startWidth = 0.15f;
+        line.endWidth = 0.15f;
+        line.useWorldSpace = false;
+        line.numCapVertices = 50;
+        line.sortingOrder = 1;
+        line.material = new Material(Shader.Find("Sprites/Default"));
+        float alpha = 1.0f;
+        if (state == gameState.PLAYERONE || state == gameState.FROZENBLUE)
+        {
+            Gradient gradient = new Gradient();
+            gradient.SetKeys(
+                new GradientColorKey[] { new GradientColorKey(Color.blue, 0.0f), new GradientColorKey(Color.cyan, 1.0f) },
+                new GradientAlphaKey[] { new GradientAlphaKey(alpha, 0.0f), new GradientAlphaKey(alpha, 1.0f) }
+            );
+            line.colorGradient = gradient;
+        }
+        else
+        {
+            Gradient gradient2 = new Gradient();
+            gradient2.SetKeys(
+                new GradientColorKey[] { new GradientColorKey(Color.red, 0.0f), new GradientColorKey(Color.yellow, 1.0f) },
+                new GradientAlphaKey[] { new GradientAlphaKey(alpha, 0.0f), new GradientAlphaKey(alpha, 1.0f) }
+            );
+            line.colorGradient = gradient2;
+        }
+    }
+
+    //remove
+    //more than 4 squares long
+    //diagonal lines
+    private void validInputs()
+    {
+        //check if mouse 
+        //check if diagonal
+        //check if 4 squares
+        if ((Math.Abs(mousePos.x - firstPos.x) < 4 && mousePos.y == firstPos.y) || (Math.Abs(mousePos.y - firstPos.y) < 4 && mousePos.x == firstPos.x))
+        {
+            if (mousePos.x < 3.5 && mousePos.x > -3.5 && mousePos.y < 3.5 && mousePos.y > -3.5)
+            {
+                line.SetPosition(1, mousePos);
+                distance = ((Vector2)mousePos - (Vector2)firstPos).magnitude;
+                if (Math.Abs(distance) > 3)
+                {
+                    distance = 3;
+                }
+            }
+        }
+       
+    }
+
+    private void removeTile(int tileNo)
+    {
+        if (state == gameState.PLAYERONE)
+        {
+            blueTiles[tileNo] -= 1;
+        }
+        else
+        {
+            redTiles[tileNo] -= 1;
+        }
+    }
+
+
+    private void tileCheck(float distance)
+    {
+        if (mousePos.y == firstPos.y || mousePos.x == firstPos.x)
+        {
+            switch (distance)
+            {
+                case 0:
+                    if ((state == gameState.PLAYERONE && blueTiles[1] <= 0) || (state == gameState.PLAYERTWO && redTiles[1] <= 0))
+                    {
+                        Destroy(line);
+                        turnTaken = false;
+                    }
+                    else
+                    {
+                        createSingleTile();
+                        removeTile(1);
+                        turnTaken = true;
+
+                    }
+                    break;
+                case 1:
+                    if ((state == gameState.PLAYERONE && blueTiles[2] <= 0) || (state == gameState.PLAYERTWO && redTiles[2] <= 0))
+                    {
+                        Destroy(line);
+                        turnTaken = false;
+                    }
+                    else
+                    {
+                        TilePosition();
+                        removeTile(2);
+                        turnTaken = true;
+                    }
+                    break;
+                case 2:
+                    if ((state == gameState.PLAYERONE && blueTiles[3] <= 0) || (state == gameState.PLAYERTWO && redTiles[3] <= 0))
+                    {
+                        Destroy(line);
+                        turnTaken = false;
+                    }
+                    else
+                    {
+                        TilePosition();
+                        removeTile(3);
+                        turnTaken = true;
+                    }
+                    break;
+
+                case 3:
+                    if ((state == gameState.PLAYERONE && blueTiles[4] <= 0) || (state == gameState.PLAYERTWO && redTiles[4] <= 0))
+                    {
+                        Destroy(line);
+                        turnTaken = false;
+                    }
+                    else
+                    {
+                        removeTile(4);
+                        TilePosition();
+                        turnTaken = true;
+                    }
+                    break;
+
+                case 4:
+                    Destroy(line);
+                    break;
+
+            }
+        }
+        else
+        {
+            Destroy(line);
+            turnTaken = false;
+        }
+                
+
+        /*foreach (KeyValuePair<int, int> kvp in blueTiles)
+        {
+            //textBox3.Text += ("Key = {0}, Value = {1}", kvp.Key, kvp.Value);
+            Debug.Log(string.Format("Key = {0}, Value = {1}", kvp.Key, kvp.Value));
+        }*/
+
+    }
+
+    /*public bool firstBiggerCheck(float first, float last)
+    {
+        if (first > last)
+        {
+            return true;
+        }else
+        {
+            return false;
+        }
+    }*/
+
+    public GameObject checkState()
+    {
+        if (state == gameState.PLAYERONE)
+        {
+            return blueTile;
+        }else if (state == gameState.PLAYERTWO)
+        {
+            return redTile;
+        }else if (state == gameState.FROZENRED)
+        {
+            return redFrozen;
+        }else
+        {
+            return blueFrozen;
+        }
+    }
+
+    public void createSingleTile()
+    {
+        int a = 0;
+        GameObject tileColour = checkState();
+        GameObject newTile = Instantiate(tileColour, new Vector3(mousePos.x, mousePos.y, 0), Quaternion.identity);
+        newTile.transform.localScale = new Vector3(1, 1, 1);
+        newTile.name = tileColour.name + currTiles + ":" + distance;
+        newTile.layer = 1;
+        Destroy(line);
+        int xnumero = (int)(mousePos.x + 2.5);
+        int ynumero = (int)(mousePos.y + 2.5) * 6;
+        position[xnumero + ynumero] = 1;
+        printPosition();
+        //positions[mousePos.x, mousePos.y] = 1;
+    }
+
+    /*public void createTileVertical()
+    {
+        float middleOfTile;
+        GameObject tileColour = checkState();
+        if(mousePos.y > firstPos.y)//newest>oldest
+        {
+            middleOfTile = distance / 2 + firstPos.y;
+        }
+        else
+        {
+            middleOfTile = distance / 2 + mousePos.y;
+        }
+        GameObject newTile = Instantiate(tileColour, new Vector3(mousePos.x, middleOfTile, 0), Quaternion.identity);
+        newTile.transform.localScale = new Vector3(transform.localScale.x, transform.localScale.y + distance, 1);
+        Destroy(line);
+
+    }*/
+
+    public void onYesOrNo(int check)
+    {
+        if (check == 1)
+        {
+            Debug.Log("you said yes");
+            string[] newno = tileClicked.name.Split(':');
+            int length = int.Parse(newno[1]);
+            Debug.Log("the length is "+length);
+
+
+            if (state == gameState.PLAYERONE)
+            {
+                //saveBlueTile = blueTiles[length + 1];
+                //blueTiles[length+1] = 0;
+                blueTiles[length + 1]++;
+                state = gameState.FROZENBLUE;
+                playerHUD.SetHUD(getBlueFour(), getBlueThree(), getBlueTwo(), getBlueOne(), blueImage);
+            }
+            else
+            {
+                //saveRedTile = redTiles[length + 1];
+                //redTiles[length+1] = 0;
+                redTiles[length + 1]++;
+                state = gameState.FROZENRED;
+                playerHUD.SetHUD(getRedFour(), getRedThree(), getRedTwo(), getRedOne(), redImage);
+            }
+            Vector2 tileCoords = tileClicked.transform.position;
+            Vector2 tileScale = tileClicked.transform.localScale;
+            if(tileScale.y == 1 && tileScale.x >2)
+            {
+                tileCoords = new Vector2(tileCoords.x - 1, tileCoords.y);
+                addToHorizontal(tileCoords, (int)tileScale.x, true);
+            }
+            else if (tileScale.x == 1 && tileScale.y > 2)
+            {
+                tileCoords = new Vector2(tileCoords.x, tileCoords.y - 1);
+                addToVertical(tileCoords, (int)tileScale.y, true);
+            }
+            else if (tileScale.y == 1)
+            {
+                addToHorizontal(tileCoords, (int)tileScale.x, true);
+            }
+            else
+            {
+                addToVertical(tileCoords, (int)tileScale.y, true);
+            }
+            printPosition();
+            Destroy(tileClicked);
+        }
+        else
+        {
+            Debug.Log("You said no");
+        }
+        popUp.SetActive(false);
+        enabled = true;
+    }
+
+    public bool checkOverlapHorizontal(Vector2 first, int distance)
+    {
+        Debug.Log(first);
+        int xnumero = (int)(first.x + 2.5);
+        int ynumero = (int)(first.y + 2.5) * 6;
+        //Debug.Log(xcoord);
+        //Debug.Log(ycoordinates);
+        for (int i = 0; i < distance; i++)
+        {
+            if(position[i + xnumero + ynumero] == 1)
+            {
+                return false;
+            }
+        }
+        return true;
+        //position[4] = 1;
+    }
+
+    public bool checkOverlapVertical(Vector2 first, int distance)
+    {
+        int xnumero = (int)(first.x + 2.5);
+        int ynumero = (int)(first.y + 2.5) * 6;
+        Debug.Log("x coord is " + xnumero);
+        for (int i = 0; i < distance; i++)
+        {
+            if(position[i + xnumero + ynumero] == 1)
+            {
+                return false;
+            }
+            ynumero = ynumero + 5;
+        }
+        return true;
+    }
+
+    public void TilePosition()
+    {
+        float middleOfTile;
+        GameObject tileColour = checkState();
+        //if vertical and first is bigger
+        if (mousePos.x == firstPos.x && mousePos.y > firstPos.y)
+        {
+            if(checkOverlapVertical(firstPos,(int)distance + 1)){
+                middleOfTile = firstPos.y + (distance / 2);
+                CreateTile(tileColour, middleOfTile, true);
+                addToVertical(firstPos, (int)distance + 1, false);
+            }
+            else
+            {
+                if (state == gameState.PLAYERONE)
+                {
+                    state = gameState.PLAYERTWO;
+                }
+                else
+                {
+                    state = gameState.PLAYERONE;
+                }
+            }
+            printPosition();
+        }//if vertical and second is bigger
+        else if (mousePos.x == firstPos.x && mousePos.y < firstPos.y)
+        {
+            if (checkOverlapVertical(mousePos, (int)distance + 1))
+            {
+                middleOfTile = firstPos.y - (distance / 2);
+                CreateTile(tileColour, middleOfTile, true);
+                addToVertical(mousePos, (int)distance + 1, false);
+            }
+            else
+            {
+                if (state == gameState.PLAYERONE)
+                {
+                    state = gameState.PLAYERTWO;
+                }
+                else
+                {
+                    state = gameState.PLAYERONE;
+                }
+            }
+            printPosition();
+
+        }
+        else if (mousePos.x != firstPos.x && mousePos.x > firstPos.x)//if horizontal and first is bigger
+        {
+            if (checkOverlapHorizontal(firstPos,(int) distance + 1))
+            {
+                middleOfTile = firstPos.x + (distance / 2);
+                CreateTile(tileColour, middleOfTile, false);
+                addToHorizontal(firstPos, (int)distance + 1, false);
+            }
+            else
+            {
+                if (state == gameState.PLAYERONE)
+                {
+                    state = gameState.PLAYERTWO;
+                }
+                else
+                {
+                    state = gameState.PLAYERONE;
+                }
+            }
+            printPosition();
+        }
+        else
+        {
+            if(checkOverlapHorizontal(mousePos, (int)distance + 1))
+            {
+                middleOfTile = firstPos.x - (distance / 2);
+                CreateTile(tileColour, middleOfTile, false);
+                addToHorizontal(mousePos, (int)distance + 1, false);
+            }
+            else
+            {
+                if (state == gameState.PLAYERONE)
+                {
+                    state = gameState.PLAYERTWO;
+                }
+                else
+                {
+                    state = gameState.PLAYERONE;
+                }
+            }
+            printPosition();
+        }
+        Destroy(line);
+        currTiles++;
+        //if horizontal and second is bigger
+    }
+
+    public void CreateTile(GameObject tileColour, float middleOfTile, bool vertical)
+    {
+        if (vertical)
+        {
+            GameObject newTile = Instantiate(tileColour, new Vector3(mousePos.x, middleOfTile, 0), Quaternion.identity);
+            newTile.transform.localScale = new Vector3(transform.localScale.x, transform.localScale.y + Math.Abs(distance), 1);
+            newTile.name = tileColour.name + currTiles + ":" + distance;
+            newTile.layer = 1;
+            Destroy(line);
+        }
+        else
+        {
+            GameObject newTile = Instantiate(tileColour, new Vector3(middleOfTile, mousePos.y, 0), Quaternion.identity);
+            newTile.transform.localScale = new Vector3(transform.localScale.x + Math.Abs(distance), transform.localScale.y, 1);
+            newTile.name = tileColour.name + currTiles + ":" + distance;
+            newTile.layer = 1;
+            Destroy(line);
+        }
+    }
+
+
+    /*public void createTile()
+    {
+        float middleOfTile;
+        float newest;
+        float oldest;
+        int a = 0;
+        int b = 0;
+        //for statements for adding to array positions
+        GameObject tileColour = checkState();
+
+        //check if vertical
+        bool vertical = isVertical();
+        if (vertical)
+        {
+            
+        }
+        else
+        {
+            newest = mousePos.x;//
+            oldest = firstPos.x;
+        }
+        if (newest > oldest)
+        {
+            middleOfTile = (distance / 2) + oldest;
+            for (float i = -2.5f; i < firstPos.x; i++)
+            {
+                a++;
+            }
+            for (float j = -2.5f; j < firstPos.y; j++)
+            {
+                b++;
+            }
+        }
+        else
+        {
+            middleOfTile = (distance / 2);//3/2 -2.5
+            for (float i = -2.5f; i < mousePos.x; i++)
+            {
+                a++;
+            }
+            for (float j = -2.5f; j < mousePos.y; j++)
+            {
+                b++;
+            }
+        }
+        if (vertical)
+        {
+            Debug.Log(mousePos + " " + firstPos);
+            GameObject newTile = Instantiate(tileColour, new Vector3(mousePos.x, middleOfTile, 0), Quaternion.identity);
+            newTile.transform.localScale = new Vector3(transform.localScale.x, transform.localScale.y + Math.Abs(distance), 1);
+            newTile.name = tileColour.name + currTiles + ":" + distance;
+            Destroy(line);
+            for (int i = 0; i < distance +1; i++)
+            {
+                if (state == gameState.PLAYERONE)
+                {
+                    positions[a, b + i] = 1;
+                }
+                else
+                {
+                    positions[a, b + i] = 2;
+                }
+            }
+            if (checkFinished())
+            {
+                state = gameState.END;
+                Debug.Log("game finished");
+            }
+
+
+        }
+        else
+        {
+            GameObject newTile = Instantiate(tileColour, new Vector3(middleOfTile, mousePos.y, 0), Quaternion.identity);
+            newTile.transform.localScale = new Vector3(transform.localScale.x + Math.Abs(distance), transform.localScale.y, 1);
+            newTile.name = tileColour.name + currTiles + ":" + distance;
+            Destroy(line);
+            for (int i = 0; i < distance+1; i++)
+            {
+                if (state == gameState.PLAYERONE)
+                {
+                    positions[a + i, b] = 1;
+                }
+                else
+                {
+                    positions[a + i, b] = 2;
+                }
+            }
+            if (checkFinished())
+            {
+                state = gameState.END;
+                Debug.Log("game finished");
+            }
+
+        }
+        currTiles++;
+        
+
+    }*/
+
+    /*public void insertMultipleTiles(Vector2 mousePos, Vector2 firstPos)
+    {
+        int a = 0;
+        int b = 0;
+        for (float i = -2.5f; i < mousePos.x; i++)
+        {
+            a++;
+        }
+        for (float j = -2.5f; j < mousePos.y; j++)
+        {
+            b++;
+        }
+
+        if (Horizontal)
+        {
+            for (int k = 0; k < distance; k++)
+            {
+                if (state == gameState.PLAYERONE)
+                {
+                    positions[a + k, b] = 1;
+                }
+                else
+                {
+                    positions[a + k, b] = 2;
+                }
+            }
+        }
+
+        for (int k = 0; k < distance; k++)
+        {
+
+        }
+        if (state == gameState.PLAYERONE)
+        {
+
+            positions[a, b] = 1;
+        }
+        else
+        {
+            positions[a, b] = 2;
+        }
+    }*/
+
+    /*public void createTileHorizontal()
+    {
+        float middleOfTile;
+        GameObject tileColour = checkState();
+        if(mousePos.x > firstPos.x)//newest > oldest
+        {
+            middleOfTile = distance / 2 + firstPos.x;
+        }
+        else
+        {
+            middleOfTile = distance / 2 + mousePos.x;
+        }
+        GameObject newTile = Instantiate(tileColour, new Vector3(middleOfTile, mousePos.y, 0), Quaternion.identity);
+        newTile.transform.localScale = new Vector3(transform.localScale.x + distance, transform.localScale.y, 1);
+        Destroy(line);
+
+    }*/
+
+    /*public void createTile()
+    {
+        
+
+        GameObject playerTile = checkState();//gets correct colour for player, bluetile
+        float last;
+        float first;
+        float result;
+        float xCoord;
+        float yCoord;
+        if (distance != 0)
+        {
+            if (checkDirection() == "horizontal")
+            {
+                last = mousePos.x;
+                first = firstPos.x;
+                xCoord = transform.localScale.x + distance;
+                yCoord = transform.localScale.y;
+            }
+            else
+            {
+                last = mousePos.y;
+                first = firstPos.y;
+                yCoord = transform.localScale.y + distance;
+                xCoord = transform.localScale.x;
+            }
+                //if first is bigger
+            if (firstBiggerCheck(first, last) == true)
+            {
+                //
+                result = (distance / 2) + last;
+                GameObject newTile = Instantiate(playerTile, new Vector3(result, last, 0), Quaternion.identity);
+                newTile.transform.localScale = new Vector3(transform.localScale.x + distance, transform.localScale.y, 1);
+                Destroy(line);
+            }
+            else
+            {
+                Debug.Log("second");
+                result = (distance / 2) + first;
+                GameObject newTile = Instantiate(playerTile, new Vector3(result, first, 0), Quaternion.identity);
+                newTile.transform.localScale = new Vector3(xCoord, yCoord, 1);
+                Destroy(line);
+            }
+        }
+        else
+        {
+            Debug.Log("thrid");
+            GameObject newTile = Instantiate(playerTile, new Vector3(mousePos.x, mousePos.y, 0), Quaternion.identity);
+            Destroy(line);
+        }
+    }*/
+
+
+    // 0 is nothing, 1 is blue, 2 is red
+    /*public void createBoard()
+    {
+        for (int i = 0; i < positions.Length; i++)
+        {
+            for (int j = 0; j < positions.Length; j++)
+            {
+                positions[i, j] = 0;
+            }
+        }
+    }*/
+
+
+
+    /*public void insertTile(Vector2 mousePos, Vector2 firstPos)
+    {
+        int a = 0;
+        int b = 0;
+        for (float i = -2.5f; i < mousePos.x; i++)
+        {
+            a++;
+        }
+        for (float j = -2.5f; j < mousePos.y; j++)
+        {
+            b++;
+        }
+        if(state == gameState.PLAYERONE)
+        {
+            positions[a, b] = 1;
+        }
+        else
+        {
+            positions[a, b] = 2;
+        }
+    }*/
+
+    public void addToHorizontal(Vector2 first, int distance, bool remove)
+    {
+        Debug.Log(first);
+        int xnumero = (int)(first.x + 2.5);
+        int ynumero = (int)(first.y + 2.5)*6;
+        int a = 1;
+        //Debug.Log(xcoord);
+        //Debug.Log(ycoordinates);
+        if (remove)
+        {
+            a = 0;
+        }
+        for (int i = 0; i < distance; i++)
+        {
+            position[i + xnumero + ynumero] = a;
+        }
+        //position[4] = 1;
+    }
+
+    public void addToVertical(Vector2 first, int distance, bool remove)
+    {
+        int xnumero = (int)(first.x + 2.5);
+        int ynumero = (int)(first.y + 2.5)*6;
+        Debug.Log("x coord is " + xnumero);
+        int a = 1;
+        if (remove)
+        {
+            a = 0;
+        }
+        for (int i = 0; i < distance; i++)
+        {
+            Debug.Log("y coordinates are: " + ynumero);
+            Debug.Log(i + xnumero + ynumero);
+            position[i + xnumero + ynumero] = a;
+            ynumero = ynumero + 5;
+        }
+    }
+
+
+    public void printPosition()
+    {
+        string str = "";
+        for (int i = 0; i < position.Length; i++)
+        {
+            str += position[i];
+        }
+        Debug.Log(str);
+    }
+
+    public bool checkFinished()
+    {
+        for (int i = 0; i < positions.GetLength(0); i++)
+        {
+            for (int j = 0; j < positions.GetLength(1); j++)
+            {
+                if (positions[i,j] == 0)
+                {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    /*public void winCondition()
+    {
+        //player wins if player cant make freeze move or normal move
+        //all tiles frozen
+    }*/
+}
+// original file
+
+
+
+
+/* random script
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Numerics;
+using TMPro;
+using UnityEditor;
+using UnityEngine;
+using UnityEngine.UI;
+using Object = System.Object;
+using Random = System.Random;
+
+public enum gameState2 {START, PLAYERONE, FROZENBLUE, FROZENRED, PLAYERTWO, END}
+
+
+public class randomScript : MonoBehaviour
+{
+
+    private int[] positions2 = {0,0,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0,0,0};
+
+    List<int[]> validMoves =new List<int[]>();
+    List<int> validKeys = new List<int>();
+    Dictionary<int, int[]> takenMoves = new Dictionary<int, int[]>();
+    public Button nextButton;
+    private bool nextClicked;
+    Random rnd = new Random();
+
+
+    public void setup()
+    {
+        //horizontals
+        int a = 0;
+        int startX = 0;
+        int startY = 0;
+        for (int y = 0; y < 6; y++)
+        {
+            for (int x = 0; x < 6; x++)
+            {
+                startX = x + (y * 6);
+                startY = y + (x * 6);
+                
+                if (x < 3)
+                {
+
+                  
+                    //a = dictionary value to pull from
+                    //[0] - start of array
+                    //[1] - length of tile
+                    //[2] - player 1 or 2
+                    validMoves.Add(new int[] { startX,startX+1,startX+2, startX+3, 1 });
+                    validMoves.Add(new int[] { startY,startY+6,startY+12, startY+18, 2 });
+
+                    validMoves.Add(new int[] { startX, startX + 1, startX + 2, 1 });
+                    validMoves.Add(new int[] { startY, startY + 6, startY + 12, 2 });
+
+                    validMoves.Add(new int[] { startX, startX + 1, 1 });
+                    validMoves.Add(new int[] { startY, startY + 6, 2 });
+
+                    validMoves.Add(new int[] { startX, 1 });
+                    validMoves.Add(new int[] { startY, 2 });
+                }
+                else if (x == 3)
+                {
+                    validMoves.Add(new int[] { startX, startX + 1, startX + 2, 1 });
+                    validMoves.Add(new int[] { startY, startY + 6, startY + 12, 2 });
+
+                    validMoves.Add(new int[] { startX, startX + 1, 1 });
+                    validMoves.Add(new int[] { startY, startY + 6, 2 });
+
+                    validMoves.Add(new int[] { startX, 1 });
+                    validMoves.Add(new int[] { startY, 2 });
+                }
+                else if (x == 4)
+                {
+                    validMoves.Add(new int[] { startX, startX + 1, 1 });
+                    validMoves.Add(new int[] { startY, startY + 6, 2 });
+
+                    validMoves.Add(new int[] { startX, 1 });
+                    validMoves.Add(new int[] { startY, 2 });
+                }
+                else
+                {
+                    validMoves.Add(new int[] { startX, 1 });
+                    validMoves.Add(new int[] { startY, 2 });
+                }
+            }
+        }
+    }
+
+   
+
+
+
+    public byte getBinaryFromPositions(int randomNo)
+    {
+        int index = 0;
+        double binaryValue = 0;
+        if (validMoves[randomNo][2] == 1)
+        {
+            int y = validMoves[randomNo][0] / 6;
+            for (int i = 5; i >= 0; i--)
+            {
+                index = i + (y * 6);
+                //Debug.Log(positions2[index]);
+                if (positions2[index] == 1)
+                {
+                    //Debug.Log("yeah");
+                    binaryValue += Math.Pow(2, 5 - i);
+                    //Debug.Log(binaryValue);
+                }
+            }
+            return (byte)binaryValue;
+        }
+        else
+        {
+            int x = validMoves[randomNo][0] % 6;
+            for (int i = 0; i < 6; i++)
+            {
+                index = x + (i * 6);//gets starting point
+                if (positions2[index] == 1)
+                {
+                    //Debug.Log("yeah");
+                    binaryValue += Math.Pow(2, i);
+                    //Debug.Log(binaryValue);
+                }
+            }
+            return (byte)binaryValue;
+        }
+    }
+
+    public byte getMove(int number)
+    {
+
+        //Debug.Log("getMovefrom valid moves {key = " + number + " value = " + validMoves[number][0] + "," + validMoves[number][1] + "," + validMoves[number][2] + "}");
+
+        int remainder = validMoves[number][0] % 6;
+        int lengthCount = 1;
+        double binaryValue = 0;
+        for (int i = 0; i < 6; i++)
+        {
+            if(i >= remainder && lengthCount <= validMoves[number][1])
+            {
+                binaryValue += Math.Pow(2, 5 - i);
+                lengthCount++;
+            }
+        }
+        //Debug.Log(getRow((int)(validMoves[number][0] / 6)));
+        return (byte)binaryValue;
+    }
+
+
+
+
+    void Start()
+    {
+        setup();
+        
+        //printDictionary();
+        //buttonStart();
+
+        //gameState state = gameState.PLAYERONE;
+
+        /*while (!validMoves.ContainsKey(randomNo))
+        {
+            randomNo = rnd.Next(maxMoves);
+        }
+        byte a = getMove(randomNo);
+        Debug.Log(a);
+            
+        byte b = getBinaryFromPositions(randomNo);
+        Debug.Log(b);
+        byte c = (byte)(a & b);
+        if (c == 0)
+        {
+            Debug.Log("safe");
+            //add to board
+            addValidMoveToBoard(randomNo);
+            validMoves.Remove(randomNo);
+            if (state == gameState.PLAYERONE)
+            {
+                state = gameState.PLAYERTWO;
+            }
+            else
+            {
+                state = gameState.PLAYERONE;
+            }
+
+        }
+        else
+        {
+            Debug.Log("overlap");
+        }
+        printPositions();
+        nextClicked = false;
+        StartCoroutine(waitForNext());*/
+
+
+
+        //byte b = getRow(randomNo);
+        //Debug.Log(Convert.ToString(a, 2).PadLeft(6, '0'));
+        //Debug.Log(a + " and " + b);
+        //byte c = (byte)(a ^= b);
+        //Debug.Log(Convert.ToString(b, 2).PadLeft(6, '0'));
+        //Debug.Log(Convert.ToString(c, 2).PadLeft(6, '0'));
+        //addValidMoveToBoard(169);
+    }
+
+    IEnumerator waitForNext()
+    {
+        nextButton.enabled = true;
+
+        yield return new WaitUntil(() => nextClicked == true);
+        nextButton.enabled = false;
+    }
+
+    public void buttonStart()
+    {
+        
+        int maxMoves = validMoves.Count;
+        Random rnd = new Random();
+        int randomNo = rnd.Next(validMoves.Count);
+        byte a = 0;
+        byte b = 0;
+        byte c = 0;
+
+        Debug.Log(maxMoves);
+        getMove(randomNo);
+        addValidMoveToBoard(randomNo);
+
+
+
+        /*while (moveFound == false)
+        {
+            if (validMoves.ContainsKey(randomNo))
+            {
+                a = getMove(randomNo);
+                //Debug.Log(a);
+                //Debug.Log("Length: " + validMoves[randomNo][1]);
+
+                b = getBinaryFromPositions(randomNo);
+                //Debug.Log(b);
+                c = (byte)(a & b);
+                if (c == 0)
+                {
+                    Debug.Log("safe");
+                    Debug.Log(a);
+                    Debug.Log(b);
+                    Debug.Log("Length: " + validMoves[randomNo][1]);
+                    //add to board
+                    addValidMoveToBoard(randomNo);
+                    validMoves.Remove(randomNo);
+                    addToTakenMoves(randomNo);
+                    printPositions();
+
+                    moveFound = true;
+                }
+                else
+                {
+                    randomNo = rnd.Next(maxMoves);
+                }
+            }
+            else
+            {
+                randomNo = rnd.Next(maxMoves);
+            }
+        }*/
+
+    }
+
+    public void addToTakenMoves(int no)
+    {
+        
+    }
+
+    public void nextButtonMethod()
+    {
+        nextClicked = true;
+    }
+
+    public void addValidMoveToBoard(int randomNo)
+    {
+        int index = 0;
+        if (validMoves[randomNo][validMoves.Count]== 1)
+        {
+            for (int i = 0; i < validMoves[randomNo][1]; i++)
+            {
+                index = validMoves[randomNo][0] + i;
+                positions2[index] = 1;
+            }
+        }
+        else
+        {
+            for (int i = 0; i < validMoves[randomNo].GetLength; i++)
+            {
+                //Debug.Log(index);
+                positions2[start + index + i] = 1;
+                index += 5;
+            }
+        }
+        //printPositions();
+    }
+
+    public void printPositions()
+    {
+        string str = "";
+        for (int i = 0; i < positions2.Length; i++)
+        {
+            str += positions2[i];
+        }
+        Debug.Log(str);
+    }
+
+    public void printDictionary()
+    {
+        foreach (KeyValuePair<int, int[]> kvp in validMoves)
+        {
+            Debug.Log("unique key = " + kvp.Key +" values = ("+ kvp.Value[0]+ ","+ kvp.Value[1] +","+kvp.Value[2]+")");
+        }
+    }
+
+}
+
+
+            //if vmMoves and validMoves are horizontal
+            if(validMoves[i][length-1] == 1 && verticle==2)
+            {
+
+                byte a = (byte)getMove(validMoves[i]);
+
+                if ((byte)(a & b) != 0)
+                {
+                    lastInvalid.Add(validMoves[i]);
+                    validMoves.Remove(validMoves[i]);
+                }
+
+            }
+            else if(validMoves[i][length - 1] == 2 && verticle == 2)
+            {
+                //if x coords are equal
+                if ((validMoves[i][0] % 6) == (randoStart % 6))
+                {
+                    byte a = (byte)getMove(validMoves[i]);
+                    if ((byte)(a & b) != 0)
+                    {
+                        lastInvalid.Add(validMoves[i]);
+                        validMoves.Remove(validMoves[i]);
+                    }
+                }
+            }
+            else
+            {
+                //if y coords are equal
+                if ((validMoves[i][0] / 6) == (randoStart / 6))
+                {
+                    byte a = (byte)getMove(validMoves[i]);
+                    if ((byte)(a & b) != 0)
+                    {
+                        lastInvalid.Add(validMoves[i]);
+                        validMoves.Remove(validMoves[i]);
+                    }
+                }
+            }
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using TMPro;
+using UnityEditor;
+using UnityEngine;
+using UnityEngine.UI;
+using Random = System.Random;
+
+public enum gameState2 {START, PLAYERONE, FROZENBLUE, FROZENRED, PLAYERTWO, END}
+
+
+public class randomScript : MonoBehaviour
+{
+
+    private int[] positions2 = {0,0,0,0,0,0, 0,0,1,0,0,0, 0,0,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0,0,0};
+
+    List<int[]> validMoves =new List<int[]>();
+    List<int[]> lastInvalid = new List<int[]>();
+
+
+
+    public void setup()
+    {
+        //horizontals
+        int a = 0;
+        int startX = 0;
+        int startY = 0;
+        for (int y = 0; y < 6; y++)
+        {
+            for (int x = 0; x < 6; x++)
+            {
+                startX = x + (y * 6);
+                startY = y + (x * 6);
+                
+                if (x < 3)
+                {
+                    validMoves.Add(new int[] {startX, startX+1, startX+2, startX+3});
+                    validMoves.Add(new int[] {startY, startY+6, startY+12, startY+18});
+
+                    validMoves.Add(new int[] {startX, startX + 1, startX + 2});
+                    validMoves.Add(new int[] {startY, startY + 6, startY + 12});
+
+                    validMoves.Add(new int[] {startX, startX + 1});
+                    validMoves.Add(new int[] {startY, startY + 6});
+
+                    validMoves.Add(new int[] {startX});
+                    validMoves.Add(new int[] {startY});
+                }
+                else if (x == 3)
+                {
+                    validMoves.Add(new int[] {startX, startX + 1, startX + 2, 3, 1 });
+                    validMoves.Add(new int[] {startY, startY + 6, startY + 12, 3, 2 });
+
+                    validMoves.Add(new int[] {startX, startX + 1, 2, 1 });
+                    validMoves.Add(new int[] {startY, startY + 6, 2, 2 });
+
+                    validMoves.Add(new int[] {startX, 1, 1 });
+                    validMoves.Add(new int[] {startY, 1, 2 });
+                }
+                else if (x == 4)
+                {
+                    validMoves.Add(new int[] {startX, startX + 1, 2, 1 });
+                    validMoves.Add(new int[] {startY, startY + 6, 2, 2 });
+
+                    validMoves.Add(new int[] {startX, 1, 1 });
+                    validMoves.Add(new int[] {startY, 1, 2 });
+                }
+                else
+                {
+                    validMoves.Add(new int[] {startX, 1, 1 });
+                    validMoves.Add(new int[] {startY, 1, 2 });
+                }
+            }
+        }
+    }
+
+    void Start()
+    {
+        setup();
+
+
+        //Vector2 coordinates = getCoords(validMoves[56]);
+        byte a = (byte)getMove(validMoves[56]);
+        byte b = (byte)GetRowOrColFromPos(validMoves[56]);
+        if ((byte)(a & b) == 0)
+        {
+            Debug.Log("no overlap");
+        }
+        else
+        {
+            Debug.Log("overlap");
+        }
+        //printValidMoves();
+        //buttonStart();
+    }
+
+    public Vector2 getCoords(int[] move)
+    {
+        int y = move[0] / 6;
+        int x = move[0] % 6;
+        return new Vector2(x, y);
+    }
+
+    public double GetRowOrColFromPos(int[] move)
+    {
+        Debug.Log("start pos getro...: " + move[0]);
+        int vertical = move[move.Length-1];
+        Debug.Log("vertical: getro..." + vertical);
+        int startPos = move[0];
+        int index = 0;
+        double binaryValue=0;
+        //horizontal
+        if (vertical == 1)
+        {
+            int x = startPos % 6;
+            int y = startPos / 6;
+            int count = 0;
+            for (int i = 0; i < 36; i++)
+            {
+                i = startPos + (6*count);
+                Debug.Log(i);
+                if (positions2[i] == 1)
+                {
+                    //Debug.Log(i)
+                }
+                count++;
+            }
+
+            return (byte)binaryValue;
+        }
+        else
+        {
+            int x = startPos / 6;
+            for (int i = 0; i < 6; i++)
+            {
+                index = x + (i * 6);//gets starting point
+                if (positions2[index] == 1)
+                {
+                    //Debug.Log("yeah");
+                    binaryValue += Math.Pow(2, i);
+                    //Debug.Log(binaryValue);
+                }
+            }
+            return (byte)binaryValue;
+        }
+
+    }
+
+    public void buttonStart()
+    {
+        Random rnd = new Random();
+        printPositions();
+        int randomNo = 0;
+        bool checkFinished = false;
+        while(checkFinished == false)
+        {
+            Debug.Log(validMoves.Count);
+            randomNo = rnd.Next(validMoves.Count - 1);
+            //Debug.Log(randomNo);
+            //printMove(randomNo);
+            addMoveToBoard(randomNo);
+            printPositions();
+            removeInvalidMoves(randomNo);
+            Debug.Log(validMoves.Count);
+            checkFinished = gameOver();
+        }
+    }
+
+    public bool gameOver()
+    {
+        for (int i = 0; i < positions2.Length; i++)
+        {
+            if (positions2[i] == 0)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+    public void printMove(int randomNo)
+    {
+        int length = validMoves[randomNo].Length;
+        int tileLength = validMoves[randomNo][length - 2];
+        Debug.Log(tileLength);
+        switch (tileLength)
+        {
+            case 1:
+                Debug.Log("p1 " + validMoves[randomNo][0]);
+                break;
+            case 2:
+                Debug.Log("p1 " + validMoves[randomNo][0] + " p2 " + validMoves[randomNo][1]);
+                break;
+            case 3:
+                Debug.Log("p1 " + validMoves[randomNo][0] + " p2 " + validMoves[randomNo][1] + " p3 " + validMoves[randomNo][2]);
+                break;
+            case 4:
+                Debug.Log("p1 " + validMoves[randomNo][0] + " p2 " + validMoves[randomNo][1] + " p3 " + validMoves[randomNo][2] + " p4 " + validMoves[randomNo][3]);
+                break;
+        }
+    }
+
+    public void addMoveToBoard(int randomNo)
+    {
+        int length = validMoves[randomNo].Length;
+        int tileLength = validMoves[randomNo][length-2];
+        //Debug.Log(tileLength);
+        switch (tileLength)
+        {
+            case 1:
+                positions2[validMoves[randomNo][0]] = 1;
+                break;
+            case 2:
+                positions2[validMoves[randomNo][0]] = 1;
+                positions2[validMoves[randomNo][1]] = 1;
+                break;
+            case 3:
+                positions2[validMoves[randomNo][0]] = 1;
+                positions2[validMoves[randomNo][1]] = 1;
+                positions2[validMoves[randomNo][2]] = 1;
+                break;
+            case 4:
+                positions2[validMoves[randomNo][0]] = 1;
+                positions2[validMoves[randomNo][1]] = 1;
+                positions2[validMoves[randomNo][2]] = 1;
+                positions2[validMoves[randomNo][3]] = 1;
+                break;
+        }
+    }
+
+    /*public byte getBinaryFromPositions(int randomNo)
+    {
+        int index = 0;
+        double binaryValue = 0;
+        int length = validMoves[randomNo].Length;
+        if (validMoves[randomNo][length-1] == 1)
+        {
+            int y = validMoves[randomNo][0] / 6;
+            for (int i = 5; i >= 0; i--)
+            {
+                index = i + (y * 6);
+                //Debug.Log(positions2[index]);
+                if (positions2[index] == 1)
+                {
+                    //Debug.Log("yeah");
+                    binaryValue += Math.Pow(2, 5 - i);
+                    //Debug.Log(binaryValue);
+                }
+            }
+            return (byte)binaryValue;
+        }
+        else
+        {
+            int x = validMoves[randomNo][0] % 6;
+            for (int i = 0; i < 6; i++)
+            {
+                index = x + (i * 6);//gets starting point
+                if (positions2[index] == 1)
+                {
+                    //Debug.Log("yeah");
+                    binaryValue += Math.Pow(2, i);
+                    //Debug.Log(binaryValue);
+                }
+            }
+            return (byte)binaryValue;
+        }
+    }*/
+
+    public void removeInvalidMoves(int randomNo)
+    {
+        int length = 0;
+        byte b = (byte)getMove(validMoves[randomNo]);
+        int randoLength = validMoves[randomNo].Length;
+        int verticle = validMoves[randomNo][randoLength - 1];
+        int randoStart = validMoves[randomNo][0];
+
+        for (int i = validMoves.Count-1; i >= 0; i--)
+        {
+            
+        }
+    }
+
+    public double getMove(int[] move)
+    {
+        Debug.Log("start pos getmove "+move[0]);
+        int newStart = move[0] % 6;
+        int arrayLength = move.Length;
+        int vertical = move[arrayLength - 1];
+        Debug.Log("vertical getmove " + vertical);
+        int tileLength = move[arrayLength - 2];
+        double binaryValue = 0;
+        for (int i = 0; i < 6; i++)
+        {
+            if (i >= newStart && i < (tileLength + newStart))
+            {
+                binaryValue += Math.Pow(2, 5 - i);
+            }
+        }
+        return binaryValue;
+    }
+
+    public void printPositions()
+    {
+        string str = "";
+        for (int i = 0; i < positions2.Length; i++)
+        {
+            str += positions2[i];
+        }
+        Debug.Log(str);
+    }
+
+    public void printValidMoves()
+    {
+        int tileLength = 0;
+        foreach (int[] move in validMoves)
+        {
+            tileLength = move[0];
+            switch (tileLength)
+            {
+                case 1:
+                    Debug.Log("p1 " + move[1]);
+                    break;
+                case 2:
+                    Debug.Log("p1 " + move[1] + " p2 " + move[2]);
+                    break;
+                case 3:
+                    Debug.Log("p1 " + move[1] + " p2 " + move[2] + " p3 " + move[3]);
+                    break;
+                case 4:
+                    Debug.Log("p1 " + move[1] + " p2 " + move[2] + " p3 " + move[3] + " p4 " + move[4]);
+                    break;
+            }
+
+        }
+    }
+
+    public void printLastInvalid()
+    {
+        int length = 0;
+        int tileLength = 0;
+        string result = "";
+        foreach (int[] move in lastInvalid)
+        {
+            length = move.Length;
+            tileLength = move[length-2];
+            switch (tileLength)
+            {
+                case 1:
+                    Debug.Log("p1 " + move[1]);
+                    break;
+                case 2:
+                    Debug.Log("p1 " + move[1] + " p2 " + move[2]);
+                    break;
+                case 3:
+                    Debug.Log("p1 " + move[1] + " p2 " + move[2] + " p3 " + move[3]);
+                    break;
+                case 4:
+                    Debug.Log("p1 " + move[1] + " p2 " + move[2] + " p3 " + move[3] + " p4 " + move[4]);
+                    break;
+            }
+
+        }
+
+    }
+
+}
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using TMPro;
+using UnityEditor;
+using UnityEngine;
+using UnityEngine.UI;
+using Random = System.Random;
+
+public enum gameState2 { START, PLAYERONE, FROZENBLUE, FROZENRED, PLAYERTWO, END }
+
+
+public class randomScript : MonoBehaviour
+{
+
+    private int[] positions2 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+
+    List<int[]> validMovesPlayerOne = new List<int[]>();
+    List<int[]> validMovesAll = new List<int[]>();
+    List<int[]> validMovesPlayerTwo = new List<int[]>();
+    private Dictionary<int, int> playerOneTiles = new Dictionary<int, int>();
+    private Dictionary<int, int> playerTwoTiles = new Dictionary<int, int>();
+    public gameState state;
+    Random rnd = new Random();
+    List<int[]> playerOneMovesTaken = new List<int[]>();
+    List<int[]> playerTwoMovesTaken = new List<int[]>();
+    List<int[]> AllPositions = new List<int[]>();
+    List<int> FrozenPositions = new List<int>();
+
+
+
+
+    public void setup()
+    {
+        //horizontals
+        int a = 0;
+        int startX = 0;
+        int startY = 0;
+        int length = 0;
+
+        playerOneTiles.Add(1, 2);
+        playerOneTiles.Add(2, 3);
+        playerOneTiles.Add(3, 3);
+        playerOneTiles.Add(4, 1);
+        playerTwoTiles.Add(1, 2);
+        playerTwoTiles.Add(3, 3);
+        playerTwoTiles.Add(2, 2);
+        playerTwoTiles.Add(4, 1);
+
+        for (int y = 0; y < 6; y++)
+        {
+            for (int x = 0; x < 6; x++)
+            {
+                startX = x + (y * 6);
+                startY = y + (x * 6);
+                length = x;
+                if (length < 3)
+                {
+                    validMovesPlayerOne.Add(new int[] { startX, startX + 1, startX + 2, startX + 3 });
+                    validMovesPlayerOne.Add(new int[] { startY, startY + 6, startY + 12, startY + 18 });
+
+                    validMovesPlayerOne.Add(new int[] { startX, startX + 1, startX + 2 });
+                    validMovesPlayerOne.Add(new int[] { startY, startY + 6, startY + 12 });
+
+                    validMovesPlayerOne.Add(new int[] { startX, startX + 1 });
+                    validMovesPlayerOne.Add(new int[] { startY, startY + 6 });
+
+                    validMovesPlayerOne.Add(new int[] { startX });
+                    validMovesPlayerOne.Add(new int[] { startY });
+
+                    validMovesPlayerTwo.Add(new int[] { startX, startX + 1, startX + 2, startX + 3 });
+                    validMovesPlayerTwo.Add(new int[] { startY, startY + 6, startY + 12, startY + 18 });
+
+                    validMovesPlayerTwo.Add(new int[] { startX, startX + 1, startX + 2 });
+                    validMovesPlayerTwo.Add(new int[] { startY, startY + 6, startY + 12 });
+
+                    validMovesPlayerTwo.Add(new int[] { startX, startX + 1 });
+                    validMovesPlayerTwo.Add(new int[] { startY, startY + 6 });
+
+                    validMovesPlayerTwo.Add(new int[] { startX });
+                    validMovesPlayerTwo.Add(new int[] { startY });
+
+                    validMovesAll.Add(new int[] { startX, startX + 1, startX + 2, startX + 3 });
+                    validMovesAll.Add(new int[] { startY, startY + 6, startY + 12, startY + 18 });
+
+                    validMovesAll.Add(new int[] { startX, startX + 1, startX + 2 });
+                    validMovesAll.Add(new int[] { startY, startY + 6, startY + 12 });
+
+                    validMovesAll.Add(new int[] { startX, startX + 1 });
+                    validMovesAll.Add(new int[] { startY, startY + 6 });
+
+                    validMovesAll.Add(new int[] { startX });
+                    validMovesAll.Add(new int[] { startY });
+
+                    AllPositions.Add(new int[] { startX, startX + 1, startX + 2, startX + 3 });
+                    AllPositions.Add(new int[] { startY, startY + 6, startY + 12, startY + 18 });
+
+                    AllPositions.Add(new int[] { startX, startX + 1, startX + 2 });
+                    AllPositions.Add(new int[] { startY, startY + 6, startY + 12 });
+
+                    AllPositions.Add(new int[] { startX, startX + 1 });
+                    AllPositions.Add(new int[] { startY, startY + 6 });
+
+                    AllPositions.Add(new int[] { startX });
+                    AllPositions.Add(new int[] { startY });
+                }
+                else if (length == 3)
+                {
+                    validMovesPlayerOne.Add(new int[] { startX, startX + 1, startX + 2 });
+                    validMovesPlayerOne.Add(new int[] { startY, startY + 6, startY + 12 });
+
+                    validMovesPlayerOne.Add(new int[] { startX, startX + 1 });
+                    validMovesPlayerOne.Add(new int[] { startY, startY + 6 });
+
+                    validMovesPlayerOne.Add(new int[] { startX });
+                    validMovesPlayerOne.Add(new int[] { startY });
+
+                    validMovesPlayerTwo.Add(new int[] { startX, startX + 1, startX + 2 });
+                    validMovesPlayerTwo.Add(new int[] { startY, startY + 6, startY + 12 });
+
+                    validMovesPlayerTwo.Add(new int[] { startX, startX + 1 });
+                    validMovesPlayerTwo.Add(new int[] { startY, startY + 6 });
+
+                    validMovesPlayerTwo.Add(new int[] { startX });
+                    validMovesPlayerTwo.Add(new int[] { startY });
+
+                    validMovesAll.Add(new int[] { startX, startX + 1, startX + 2 });
+                    validMovesAll.Add(new int[] { startY, startY + 6, startY + 12 });
+
+                    validMovesAll.Add(new int[] { startX, startX + 1 });
+                    validMovesAll.Add(new int[] { startY, startY + 6 });
+
+                    validMovesAll.Add(new int[] { startX });
+                    validMovesAll.Add(new int[] { startY });
+
+                    AllPositions.Add(new int[] { startX, startX + 1, startX + 2 });
+                    AllPositions.Add(new int[] { startY, startY + 6, startY + 12 });
+
+                    AllPositions.Add(new int[] { startX, startX + 1 });
+                    AllPositions.Add(new int[] { startY, startY + 6 });
+
+                    AllPositions.Add(new int[] { startX });
+                    AllPositions.Add(new int[] { startY });
+                }
+                else if (length == 4)
+                {
+                    validMovesPlayerOne.Add(new int[] { startX, startX + 1 });
+                    validMovesPlayerOne.Add(new int[] { startY, startY + 6 });
+
+                    validMovesPlayerOne.Add(new int[] { startX });
+                    validMovesPlayerOne.Add(new int[] { startY });
+
+                    validMovesPlayerTwo.Add(new int[] { startX, startX + 1 });
+                    validMovesPlayerTwo.Add(new int[] { startY, startY + 6 });
+
+                    validMovesPlayerTwo.Add(new int[] { startX });
+                    validMovesPlayerTwo.Add(new int[] { startY });
+
+                    validMovesAll.Add(new int[] { startX, startX + 1 });
+                    validMovesAll.Add(new int[] { startY, startY + 6 });
+
+                    validMovesAll.Add(new int[] { startX });
+                    validMovesAll.Add(new int[] { startY });
+
+                    AllPositions.Add(new int[] { startX, startX + 1 });
+                    AllPositions.Add(new int[] { startY, startY + 6 });
+
+                    AllPositions.Add(new int[] { startX });
+                    AllPositions.Add(new int[] { startY });
+                }
+                else
+                {
+                    validMovesPlayerOne.Add(new int[] { startX });
+                    validMovesPlayerOne.Add(new int[] { startY });
+
+                    validMovesPlayerTwo.Add(new int[] { startX });
+                    validMovesPlayerTwo.Add(new int[] { startY });
+
+                    validMovesAll.Add(new int[] { startX });
+                    validMovesAll.Add(new int[] { startY });
+
+                    AllPositions.Add(new int[] { startX });
+                    AllPositions.Add(new int[] { startY });
+                }
+            }
+        }
+
+    }
+
+    void Start()
+    {
+        setup();
+        //printValidMoves();
+        state = gameState.PLAYERONE;
+        buttonStart();
+
+    }
+
+    public Vector2 getCoords(int[] move)
+    {
+        int y = move[0] / 6;
+        int x = move[0] % 6;
+        return new Vector2(x, y);
+    }
+
+
+    public void buttonStart()
+    {
+        printPositions();
+        int randomNo = 0;
+        bool checkFinished = false;
+        int length = 0;
+        do
+        {
+
+            if (state == gameState.PLAYERONE)
+            {
+                if (isSwap(playerOneTiles))
+                {
+                    Debug.Log("swap move needed");
+                    swapMove(playerOneMovesTaken, playerOneTiles);
+                }
+                else
+                {
+                    Debug.Log("Player one before: " + validMovesPlayerOne.Count);
+                    Debug.Log("All before: " + validMovesAll.Count);
+                    randomNo = rnd.Next(validMovesPlayerOne.Count - 1);
+                    addMoveToBoard(randomNo, validMovesPlayerOne, playerOneMovesTaken);
+                }
+                printPositions();
+                length = validMovesPlayerOne[randomNo].Length;
+
+                if (tileCheck(length))
+                {
+                    Debug.Log("yes");
+                    removeInvalidMoves(randomNo, validMovesPlayerOne);
+                }
+                else
+                {
+                    removeInvalidMovesAndTiles(randomNo, length, validMovesPlayerOne, validMovesPlayerTwo);
+                }
+                Debug.Log("Player one after: " + validMovesPlayerOne.Count);
+                Debug.Log("All after: " + validMovesAll.Count);
+                if (validMovesPlayerOne.Count == 0)
+                {
+                    checkFinished = true;
+                }
+                state = gameState.PLAYERTWO;
+
+            }
+            else // if player two
+            {
+                if (isSwap(playerTwoTiles))
+                {
+                    Debug.Log("swap move needed");
+                    swapMove(playerTwoMovesTaken, playerTwoTiles);
+
+                }
+                else
+                {
+                    Debug.Log("Player 2 before: " + validMovesPlayerTwo.Count);
+                    Debug.Log("All before: " + validMovesAll.Count);
+                    randomNo = rnd.Next(validMovesPlayerTwo.Count - 1);
+                    addMoveToBoard(randomNo, validMovesPlayerTwo, playerTwoMovesTaken);
+                }
+                //printTiles(playerTwoTiles);
+                //remove from validmoves
+                printPositions();
+                length = validMovesPlayerTwo[randomNo].Length;
+
+                if (tileCheck(length))
+                {
+                    removeInvalidMoves(randomNo, validMovesPlayerTwo);
+                }
+                else
+                {
+                    removeInvalidMovesAndTiles(randomNo, length, validMovesPlayerTwo, validMovesPlayerOne);
+                }
+                Debug.Log("Player two after: " + validMovesPlayerTwo.Count);
+                Debug.Log("All after: " + validMovesAll.Count);
+                state = gameState.PLAYERTWO;
+
+            }
+        } while (checkFinished == false);
+        Debug.Log("finished");
+    }
+
+
+    /*public bool gameOver(Dictionary<int,int> playerTiles)
+    {
+        if (isTiles(playerTiles))
+        {
+            return true;
+        }
+        if (allTaken())
+        {
+            return true;
+        }
+        return false;
+    }*/
+
+    public bool swapMove(List<int[]> playerMovesTaken, Dictionary<int, int> tileDictionary)
+    {
+        List<int[]> tempValidMoves = new List<int[]>();
+        int randomNo = rnd.Next(playerMovesTaken.Count - 1);
+        int length = playerMovesTaken[randomNo].Length;
+        removeFromBoard(playerMovesTaken[randomNo]);
+        for (int i = AllPositions.Count - 1; i >= 0; i--)
+        {
+            if (AllPositions[i].Intersect(FrozenPositions).Any())
+            {
+                if (AllPositions[i].Intersect(playerMovesTaken[randomNo]).Any())
+                {
+                    validMovesAll.Add(AllPositions[i]);
+                    if (AllPositions[i].Length != playerTwoMovesTaken[randomNo].Length)
+                    {
+                        tempValidMoves.Add(AllPositions[i]);
+                    }
+                }
+            }
+        }
+
+        tileDictionary[length] += 1;
+        int randomNo2 = rnd.Next(tempValidMoves.Count - 1);
+        addMoveToBoard(randomNo2, tempValidMoves, playerMovesTaken);
+        FrozenPositions.AddRange(tempValidMoves[randomNo2]);
+        return true;
+    }
+
+
+    public void removeFromBoard(int[] playerMovesTakenArray)
+    {
+        int length = playerMovesTakenArray.Length;
+        Debug.Log(length);
+        switch (length)
+        {
+            case 1:
+                positions2[playerMovesTakenArray[0]] = 0;
+
+                break;
+            case 2:
+                positions2[playerMovesTakenArray[0]] = 0;
+                positions2[playerMovesTakenArray[1]] = 0;
+
+                break;
+            case 3:
+                positions2[playerMovesTakenArray[0]] = 0;
+                positions2[playerMovesTakenArray[1]] = 0;
+                positions2[playerMovesTakenArray[2]] = 0;
+
+                break;
+            case 4:
+                positions2[playerMovesTakenArray[0]] = 0;
+                positions2[playerMovesTakenArray[1]] = 0;
+                positions2[playerMovesTakenArray[2]] = 0;
+                positions2[playerMovesTakenArray[3]] = 0;
+                break;
+        }
+    }
+
+    public bool allTaken()
+    {
+        for (int i = 0; i < positions2.Length; i++)
+        {
+            if (positions2[i] == 0)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public bool isSwap(Dictionary<int, int> playerTiles)
+    {
+        int largest = 0;
+        int tmp = 0;
+        int largestSpace = 0;
+        for (int i = 1; i <= playerTiles.Count; i++)
+        {
+            if (playerTiles[i] != 0)
+            {
+                largest = i;
+            }
+
+        }
+        Debug.Log("largest = " + largest);
+
+        for (int i = 0; i < positions2.Length; i++)
+        {
+            tmp++;
+            if (positions2[i] == 1)
+            {
+                tmp = 0;
+            }
+            if (tmp > largestSpace)
+            {
+                largestSpace = tmp;
+            }
+        }
+        for (int i = 0; i < positions2.Length; i++)
+        {
+            tmp++;
+            if (positions2[i] == 1)
+            {
+                tmp = 0;
+            }
+            if (tmp > largestSpace)
+            {
+                largestSpace = tmp;
+            }
+        }
+        tmp = 0;
+        int index = 0;
+        for (int i = 0; i < 6; i++)
+        {
+            tmp = 0;
+            for (int k = i; k < 36; k++)
+            {
+                if(positions2[index] == 0)
+                {
+                    tmp++;
+                }
+                else
+                {
+                    tmp = 0;
+                }
+                if (tmp > largestSpace)
+                {
+                    largestSpace = tmp;
+                }
+                k += 6;
+            }
+        }
+        Debug.Log("largest space " + largestSpace);
+        if (largest > largestSpace)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+
+    }
+
+    public void printMove(int randomNo)
+    {
+        int tileLength = validMovesPlayerOne[randomNo].Length;
+        switch (tileLength)
+        {
+            case 1:
+                Debug.Log("p1 " + validMovesPlayerOne[randomNo][0]);
+                break;
+            case 2:
+                Debug.Log("p1 " + validMovesPlayerOne[randomNo][0] + " p2 " + validMovesPlayerOne[randomNo][1]);
+                break;
+            case 3:
+                Debug.Log("p1 " + validMovesPlayerOne[randomNo][0] + " p2 " + validMovesPlayerOne[randomNo][1] + " p3 " + validMovesPlayerOne[randomNo][2]);
+                break;
+            case 4:
+                Debug.Log("p1 " + validMovesPlayerOne[randomNo][0] + " p2 " + validMovesPlayerOne[randomNo][1] + " p3 " + validMovesPlayerOne[randomNo][2] + " p4 " + validMovesPlayerOne[randomNo][3]);
+                break;
+        }
+    }
+
+    public void addMoveToBoard(int randomNo, List<int[]> validMovesPlayer, List<int[]> playerMovesTaken)
+    {
+        int length = validMovesPlayer[randomNo].Length;
+        Debug.Log(length);
+        switch (length)
+        {
+            case 1:
+                positions2[validMovesPlayer[randomNo][0]] = 1;
+
+                break;
+            case 2:
+                positions2[validMovesPlayer[randomNo][0]] = 1;
+                positions2[validMovesPlayer[randomNo][1]] = 1;
+
+                break;
+            case 3:
+                positions2[validMovesPlayer[randomNo][0]] = 1;
+                positions2[validMovesPlayer[randomNo][1]] = 1;
+                positions2[validMovesPlayer[randomNo][2]] = 1;
+
+                break;
+            case 4:
+                positions2[validMovesPlayer[randomNo][0]] = 1;
+                positions2[validMovesPlayer[randomNo][1]] = 1;
+                positions2[validMovesPlayer[randomNo][2]] = 1;
+                positions2[validMovesPlayer[randomNo][3]] = 1;
+
+                break;
+        }
+        playerMovesTaken.Add(validMovesPlayer[randomNo]);
+
+    }
+
+    private bool tileCheck(int length)
+    {
+        if (state == gameState.PLAYERONE)
+        {
+            return isTileValid(playerOneTiles, length);
+        }
+        else
+        {
+            return isTileValid(playerTwoTiles, length);
+        }
+    }
+
+    public bool isTileValid(Dictionary<int, int> tileDictionary, int length)
+    {
+        if (tileDictionary[length] == 0)
+        {
+            return false;
+        }
+        else
+        {
+            tileDictionary[length] -= 1;
+            return true;
+        }
+    }
+
+    public void removeInvalidMoves(int randomNo, List<int[]> validMovesPlayer)
+    {
+        List<int[]> toRemove = new List<int[]>();
+        List<int[]> toRemove2 = new List<int[]>();
+        List<int[]> toRemove3 = new List<int[]>();
+
+        for (int i = validMovesAll.Count - 1; i >= 0; i--)
+        {
+            if (validMovesAll[i].Intersect(validMovesPlayer[randomNo]).Any())
+            {
+                toRemove.Add(validMovesAll[i]);
+                playerTwoMovesTaken.Add(validMovesAll[i]);
+                playerOneMovesTaken.Add(validMovesAll[i]);
+            }
+        }
+
+        for (int i = validMovesPlayerOne.Count - 1; i >= 0; i--)
+        {
+            if (validMovesPlayerOne[i].Intersect(validMovesPlayer[randomNo]).Any())
+            {
+                toRemove2.Add(validMovesPlayerOne[i]);
+            }
+        }
+
+        for (int i = validMovesPlayerTwo.Count - 1; i >= 0; i--)
+        {
+            if (validMovesPlayerTwo[i].Intersect(validMovesPlayer[randomNo]).Any())
+            {
+                toRemove3.Add(validMovesPlayerTwo[i]);
+            }
+        }
+
+
+        validMovesAll.RemoveAll(x => toRemove.Contains(x));
+        validMovesPlayerOne.RemoveAll(x => toRemove2.Contains(x));
+        validMovesPlayerTwo.RemoveAll(x => toRemove3.Contains(x));
+
+    }
+
+    public void removeInvalidMovesAndTiles(int randomNo, int length, List<int[]> validMovesPlayer, List<int[]> validMovesPlayer2)
+    {
+        List<int[]> toRemove4 = new List<int[]>();
+        List<int[]> toRemove5 = new List<int[]>();
+        List<int[]> toRemoveTiles = new List<int[]>();
+        for (int i = validMovesPlayer.Count - 1; i >= 0; i--)
+        {
+            if (validMovesPlayer[i].Length == length)
+            {
+                toRemoveTiles.Add(validMovesPlayer[i]);
+            }
+            else
+            {
+                if (validMovesPlayer[i].Intersect(validMovesPlayer[randomNo]).Any())
+                {
+                    toRemoveTiles.Add(validMovesPlayer[i]);
+
+                }
+            }
+        }
+        for (int i = validMovesAll.Count - 1; i >= 0; i--)
+        {
+            if (validMovesAll[i].Intersect(validMovesPlayer[randomNo]).Any())
+            {
+                toRemove4.Add(validMovesAll[i]);
+                playerTwoMovesTaken.Add(validMovesAll[i]);
+                playerOneMovesTaken.Add(validMovesAll[i]);
+            }
+        }
+
+        for (int i = validMovesPlayer2.Count - 1; i >= 0; i--)
+        {
+            if (validMovesPlayer2[i].Intersect(validMovesPlayer2[randomNo]).Any())
+            {
+                toRemove5.Add(validMovesPlayer2[i]);
+            }
+        }
+
+        validMovesAll.RemoveAll(x => toRemove4.Contains(x));
+        validMovesPlayer2.RemoveAll(x => toRemove5.Contains(x));
+        validMovesPlayer.RemoveAll(x => toRemoveTiles.Contains(x));
+    }
+
+
+    public void printPositions()
+    {
+        string str = "";
+        for (int i = 0; i < positions2.Length; i++)
+        {
+            str += positions2[i];
+        }
+        Debug.Log(str);
+    }
+
+    public void printTiles(Dictionary<int, int> playerTiles)
+    {
+        string str = "";
+        foreach (KeyValuePair<int, int> kvp in playerTiles)
+        {
+            //textBox3.Text += ("Key = {0}, Value = {1}", kvp.Key, kvp.Value);
+            str += string.Format("Key = {0}, Value = {1}", kvp.Key, kvp.Value);
+        }
+        Debug.Log(str);
+    }
+
+    public void printValidMoves()
+    {
+        int tileLength = 0;
+        foreach (int[] move in validMovesPlayerOne)
+        {
+            tileLength = move.Length;
+            switch (tileLength)
+            {
+                case 1:
+                    Debug.Log("p1 " + move[0]);
+                    break;
+                case 2:
+                    Debug.Log("p1 " + move[0] + " p2 " + move[1]);
+                    break;
+                case 3:
+                    Debug.Log("p1 " + move[0] + " p2 " + move[1] + " p3 " + move[2]);
+                    break;
+                case 4:
+                    Debug.Log("p1 " + move[0] + " p2 " + move[1] + " p3 " + move[2] + " p4 " + move[3]);
+                    break;
+            }
+
+        }
+    }
+
+    /*public void printLastInvalid()
+    {
+        int length = 0;
+        int tileLength = 0;
+        string result = "";
+        foreach (int[] move in lastInvalid)
+        {
+            length = move.Length;
+            switch (length)
+            {
+                case 1:
+                    Debug.Log("p1 " + move[0]);
+                    break;
+                case 2:
+                    Debug.Log("p1 " + move[0] + " p2 " + move[1]);
+                    break;
+                case 3:
+                    Debug.Log("p1 " + move[0] + " p2 " + move[1] + " p3 " + move[2]);
+                    break;
+                case 4:
+                    Debug.Log("p1 " + move[0] + " p2 " + move[1] + " p3 " + move[2] + " p4 " + move[3]);
+                    break;
+            }
+
+        }
+
+    }*/
+
+}
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using TMPro;
+using UnityEditor;
+using UnityEngine;
+using UnityEngine.UI;
+using Random = System.Random;
+
+public enum gameState2 { START, PLAYERONE, FROZENBLUE, FROZENRED, PLAYERTWO, END }
+
+
+public class randomScript : MonoBehaviour
+{
+
+    private int[] positions2 =
+        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+    private List<int[]> validMovesPlayerOne;
+    private List<int[]> validMovesPlayerTwo;
+    private Dictionary<int, int> playerOneTiles = new Dictionary<int, int>();
+    private Dictionary<int, int> playerTwoTiles = new Dictionary<int, int>();
+    public gameState state;
+    Random rnd = new Random();
+    List<int[]> playerOneMovesTaken = new List<int[]>();
+    List<int[]> playerTwoMovesTaken = new List<int[]>();
+    List<int[]> AllPositions = new List<int[]>();
+    List<int> FrozenPositions = new List<int>();
+    
+    //what i need to add today - 
+    //where should win condition be? after swap move?
+    //first thought - if all tiles are frozen - probs a draw
+    //if zero possible moves after swap chosen
+    //might have to create list of liquid placements
+
+    public void setup()
+    {
+        int startX = 0;
+        int startY = 0;
+        int length = 0;
+
+        playerOneTiles.Add(1, 2);
+        playerOneTiles.Add(2, 3);
+        playerOneTiles.Add(3, 3);
+        playerOneTiles.Add(4, 1);
+        playerTwoTiles.Add(1, 2);
+        playerTwoTiles.Add(2, 3);
+        playerTwoTiles.Add(3, 3);
+        playerTwoTiles.Add(4, 1);
+
+        for (int y = 0; y < 6; y++)
+        {
+            for (int x = 0; x < 6; x++)
+            {
+                startX = x + (y * 6);
+                startY = y + (x * 6);
+                length = x;
+                if (length < 3)
+                {
+                    AllPositions.Add(new int[] {startX, startX + 1, startX + 2, startX + 3});
+                    AllPositions.Add(new int[] {startY, startY + 6, startY + 12, startY + 18});
+
+                    AllPositions.Add(new int[] {startX, startX + 1, startX + 2});
+                    AllPositions.Add(new int[] {startY, startY + 6, startY + 12});
+
+                    AllPositions.Add(new int[] {startX, startX + 1});
+                    AllPositions.Add(new int[] {startY, startY + 6});
+
+                    AllPositions.Add(new int[] {startX});
+                    AllPositions.Add(new int[] {startY});
+
+                }
+                else if (length == 3)
+                {
+
+                    AllPositions.Add(new int[] {startX, startX + 1, startX + 2});
+                    AllPositions.Add(new int[] {startY, startY + 6, startY + 12});
+
+                    AllPositions.Add(new int[] {startX, startX + 1});
+                    AllPositions.Add(new int[] {startY, startY + 6});
+
+                    AllPositions.Add(new int[] {startX});
+                    AllPositions.Add(new int[] {startY});
+
+                }
+                else if (length == 4)
+                {
+                    AllPositions.Add(new int[] {startX, startX + 1});
+                    AllPositions.Add(new int[] {startY, startY + 6});
+
+                    AllPositions.Add(new int[] {startX});
+                    AllPositions.Add(new int[] {startY});
+                }
+                else
+                {
+
+                    AllPositions.Add(new int[] {startX});
+                    AllPositions.Add(new int[] {startY});
+
+                }
+            }
+        }
+
+        validMovesPlayerOne = AllPositions;
+        validMovesPlayerTwo = AllPositions;
+    }
+
+    void Start()
+    {
+        setup();
+        //printValidMoves();
+        state = gameState.PLAYERONE;
+        buttonStart();
+
+    }
+
+    public Vector2 getCoords(int[] move)
+    {
+        int y = move[0] / 6;
+        int x = move[0] % 6;
+        return new Vector2(x, y);
+    }
+
+
+    public void buttonStart()
+    {
+        printPositions();
+        int randomNo = 0;
+        bool checkFinished = false;
+        int length = 0;
+        do
+        {
+            if (state == gameState.PLAYERONE)
+            {
+                if (isSwap(validMovesPlayerOne))
+                {
+                    Debug.Log("swap move needed");
+                    randomNo = swapMove(playerOneMovesTaken, playerOneTiles,validMovesPlayerOne,playerTwoMovesTaken,validMovesPlayerTwo);
+                }
+                else
+                {
+                    Debug.Log("Player one before: " + validMovesPlayerOne.Count);
+                    randomNo = rnd.Next(validMovesPlayerOne.Count - 1);
+                    addMoveToBoard(randomNo, validMovesPlayerOne, playerOneMovesTaken);
+                }
+
+                printPositions();
+                length = validMovesPlayerOne[randomNo].Length;
+                Debug.Log("player one start pos: "+ validMovesPlayerOne[randomNo][0]);
+                printTiles(playerOneTiles);
+                
+
+                if (tileCheck(length, playerOneTiles))
+                {
+                    Debug.Log("yes");
+                    removeInvalidMoves(randomNo, validMovesPlayerOne);
+                }
+                else
+                {
+                    removeInvalidMovesAndTiles(randomNo, validMovesPlayerOne, playerOneMovesTaken, validMovesPlayerTwo,
+                        playerTwoMovesTaken);
+                }
+                
+                //Debug.Log("player 1 tiles:");
+                //printTiles(playerOneTiles);
+
+                Debug.Log("Player one after: " + validMovesPlayerOne.Count);
+
+                state = gameState.PLAYERTWO;
+
+            }
+            else // if player two
+            {
+                if (isSwap(validMovesPlayerTwo))
+                {
+                    Debug.Log("swap move needed");
+                    randomNo = swapMove(playerTwoMovesTaken, playerTwoTiles, validMovesPlayerTwo,playerOneMovesTaken,validMovesPlayerOne);
+                }
+                else
+                {
+                    Debug.Log("Player 2 before: " + validMovesPlayerTwo.Count);
+                    randomNo = rnd.Next(validMovesPlayerTwo.Count - 1);
+                    addMoveToBoard(randomNo, validMovesPlayerTwo, playerTwoMovesTaken);
+                }
+
+                //printTiles(playerTwoTiles);
+                //remove from validmoves
+                printPositions();
+                length = validMovesPlayerTwo[randomNo].Length;
+                Debug.Log("player two start pos: "+ validMovesPlayerTwo[randomNo][0]);
+                printTiles(playerTwoTiles);
+                if (tileCheck(length, playerTwoTiles))
+                {
+                    removeInvalidMoves(randomNo, validMovesPlayerTwo);
+                }
+                else
+                {
+                    removeInvalidMovesAndTiles(randomNo, validMovesPlayerTwo, playerTwoMovesTaken, validMovesPlayerOne,
+                        playerOneMovesTaken);
+                }
+                //Debug.Log("player 2 tiles:");
+                //printTiles(playerTwoTiles);
+
+                //Debug.Log("Player two after: " + validMovesPlayerTwo.Count);
+                state = gameState.PLAYERONE;
+
+            }
+        } while (checkFinished == false);
+
+        Debug.Log("finished");
+    }
+    
+
+
+    /*public bool gameOver(Dictionary<int,int> playerTiles)
+    {
+        if (isTiles(playerTiles))
+        {
+            return true;
+        }
+        if (allTaken())
+        {
+            return true;
+        }
+        return false;
+    }*/
+
+    public int swapMove(List<int[]> playerMovesTaken, Dictionary<int, int> tileDictionary, List<int[]> playerValidMoves, List<int[]> playerMovesTaken2, List<int[]> playerValidMoves2)
+    {
+        List<int[]> potentialMoves = new List<int[]>();
+        List<int[]> rememberTiles = new List<int[]>();
+        List<int> playerMovesTakenInts = FrozenPositions;
+        List<int> playerMovesTakenInts2 = FrozenPositions;
+
+        //gets move from taken moves list
+        int randomNo = rnd.Next(playerMovesTaken.Count - 1);
+        int length = playerMovesTaken[randomNo].Length;
+        removeFromBoard(playerMovesTaken[randomNo]);
+        // A tile is removed from the board which creates new possibilities, to do this we
+        //could check the whole board
+        for (int i = 0; i < playerMovesTaken.Count; i++)
+        {
+            playerMovesTakenInts.AddRange(playerMovesTaken[i]);
+        }
+        
+        for (int i = 0; i < playerMovesTaken2.Count; i++)
+        {
+            playerMovesTakenInts2.AddRange(playerMovesTaken2[i]);
+        }
+        
+        
+        
+        
+        //remove from player moves taken then do all positions to see if they intersect
+        //with any playerMovesTaken
+        //turn player moves taken into an array of all positions then check with allpositions
+        //to remove invalid positions
+        //get a valid move and add other moves to the board for both players
+
+        //add new valid moves onto validMoves
+        //any move that intersepts with randomno is potentially addable just needs to 
+        //be checked against 
+        //add all moves that intersept with randomno
+        //check if these moves intersept with playermovestaken for both players and add accordingly
+        
+        //i aslo need to add tile length back for tile taken out and thus if it was zero add them all back ffs i fucking hate this shit there is so much to fucking do its unreal i just wanna move onto fucking montecarlo tree search
+        //if positions[i] == length it is a potential move, if this move intersepts other moves taken then its not
+        
+        
+        for (int i = AllPositions.Count - 1; i >= 0; i--)
+        {
+            if (AllPositions[i].Intersect(playerMovesTaken[randomNo]).Any() || AllPositions[i].Length == length)
+            {
+                if (!AllPositions[i].Intersect(playerMovesTakenInts).Any())
+                {
+                    if (AllPositions[i].Length == length)
+                    {
+                        rememberTiles.Add(AllPositions[i]);
+                    }
+                    else
+                    {
+                        playerValidMoves.Add(AllPositions[i]);
+                    }
+                }
+                if (!AllPositions[i].Intersect(playerMovesTakenInts2).Any())
+                {
+                    playerValidMoves2.Add(AllPositions[i]);
+                }
+                //potentialMoves.Add(AllPositions[i]);
+            }
+        }
+
+        if (playerValidMoves.Count == 0)
+        {
+            if (state == gameState.PLAYERONE)
+            {
+                Debug.Log("player 1 wins");
+            }
+            else
+            {
+                Debug.Log("player 2 wins");
+            }
+            
+            state = gameState.END;
+            return 0;
+        }
+        else
+        {
+            tileDictionary[length] += 1;
+            int randomNo2 = rnd.Next(playerValidMoves.Count - 1);
+            addMoveToBoard(randomNo2, playerValidMoves, playerMovesTaken);
+            FrozenPositions.AddRange(playerValidMoves[randomNo2]);
+            //add all tiles to board
+            //playervalidmoves 
+            playerValidMoves.AddRange(rememberTiles);
+            return randomNo2;
+        }
+    }
+
+
+    public void removeFromBoard(int[] playerMovesTakenArray)
+    {
+        int length = playerMovesTakenArray.Length;
+        Debug.Log(length);
+        switch (length)
+        {
+            case 1:
+                positions2[playerMovesTakenArray[0]] = 0;
+
+                break;
+            case 2:
+                positions2[playerMovesTakenArray[0]] = 0;
+                positions2[playerMovesTakenArray[1]] = 0;
+
+                break;
+            case 3:
+                positions2[playerMovesTakenArray[0]] = 0;
+                positions2[playerMovesTakenArray[1]] = 0;
+                positions2[playerMovesTakenArray[2]] = 0;
+
+                break;
+            case 4:
+                positions2[playerMovesTakenArray[0]] = 0;
+                positions2[playerMovesTakenArray[1]] = 0;
+                positions2[playerMovesTakenArray[2]] = 0;
+                positions2[playerMovesTakenArray[3]] = 0;
+                break;
+        }
+    }
+
+    public bool allTaken()
+    {
+        for (int i = 0; i < positions2.Length; i++)
+        {
+            if (positions2[i] == 0)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public bool isSwap(List<int[]> validMovesPlayer)
+    {
+        if (validMovesPlayer.Count == 0)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    public void printMove(int randomNo)
+    {
+        int tileLength = validMovesPlayerOne[randomNo].Length;
+        switch (tileLength)
+        {
+            case 1:
+                Debug.Log("p1 " + validMovesPlayerOne[randomNo][0]);
+                break;
+            case 2:
+                Debug.Log("p1 " + validMovesPlayerOne[randomNo][0] + " p2 " + validMovesPlayerOne[randomNo][1]);
+                break;
+            case 3:
+                Debug.Log("p1 " + validMovesPlayerOne[randomNo][0] + " p2 " + validMovesPlayerOne[randomNo][1] + " p3 " + validMovesPlayerOne[randomNo][2]);
+                break;
+            case 4:
+                Debug.Log("p1 " + validMovesPlayerOne[randomNo][0] + " p2 " + validMovesPlayerOne[randomNo][1] + " p3 " + validMovesPlayerOne[randomNo][2] + " p4 " + validMovesPlayerOne[randomNo][3]);
+                break;
+        }
+    }
+
+    public void addMoveToBoard(int randomNo, List<int[]> validMovesPlayer, List<int[]> playerMovesTaken)
+    {
+        int length = validMovesPlayer[randomNo].Length;
+        Debug.Log(length);
+        switch (length)
+        {
+            case 1:
+                positions2[validMovesPlayer[randomNo][0]] = 1;
+
+                break;
+            case 2:
+                positions2[validMovesPlayer[randomNo][0]] = 1;
+                positions2[validMovesPlayer[randomNo][1]] = 1;
+
+                break;
+            case 3:
+                positions2[validMovesPlayer[randomNo][0]] = 1;
+                positions2[validMovesPlayer[randomNo][1]] = 1;
+                positions2[validMovesPlayer[randomNo][2]] = 1;
+
+                break;
+            case 4:
+                positions2[validMovesPlayer[randomNo][0]] = 1;
+                positions2[validMovesPlayer[randomNo][1]] = 1;
+                positions2[validMovesPlayer[randomNo][2]] = 1;
+                positions2[validMovesPlayer[randomNo][3]] = 1;
+
+                break;
+        }
+        playerMovesTaken.Add(validMovesPlayer[randomNo]);
+
+    }
+
+    private bool tileCheck(int length, Dictionary<int,int> playerTiles)
+    {
+        if (playerTiles[length] == 1)
+        {
+            return false;
+        }
+        else
+        {
+            playerTiles[length] -= 1;
+            return true;
+        }
+    }
+
+    public void removeInvalidMoves(int randomNo, List<int[]> validMovesPlayer)
+    {
+        List<int[]> toRemove2 = new List<int[]>();
+        List<int[]> toRemove3 = new List<int[]>();
+
+        for (int i = validMovesPlayerOne.Count - 1; i >= 0; i--)
+        {
+            if (validMovesPlayerOne[i].Intersect(validMovesPlayer[randomNo]).Any())
+            {
+                toRemove2.Add(validMovesPlayerOne[i]);
+                playerOneMovesTaken.Add(validMovesPlayer[randomNo]);
+            }
+        }
+
+        for (int i = validMovesPlayerTwo.Count - 1; i >= 0; i--)
+        {
+            if (validMovesPlayerTwo[i].Intersect(validMovesPlayer[randomNo]).Any())
+            {
+                toRemove3.Add(validMovesPlayerTwo[i]);
+                playerTwoMovesTaken.Add(validMovesPlayer[randomNo]);
+            }
+        }
+        validMovesPlayerOne.RemoveAll(x => toRemove2.Contains(x));
+        validMovesPlayerTwo.RemoveAll(x => toRemove3.Contains(x));
+    }
+
+    public void removeInvalidMovesAndTiles(int randomNo, List<int[]> validMovesPlayer, List<int[]> playerMovesTaken, List<int[]> validMovesPlayer2, List<int[]> playerMovesTaken2)
+    {
+        List<int[]> toRemove5 = new List<int[]>();
+        List<int[]> toRemoveTiles = new List<int[]>();
+        for (int i = validMovesPlayer.Count - 1; i >= 0; i--)
+        {
+            if (validMovesPlayer[i].Length == validMovesPlayer[randomNo].Length)
+            {
+                toRemoveTiles.Add(validMovesPlayer[i]);
+                playerMovesTaken.Add(validMovesPlayer[i]);
+            }
+            else
+            {
+                if (validMovesPlayer[i].Intersect(validMovesPlayer[randomNo]).Any())
+                {
+                    toRemoveTiles.Add(validMovesPlayer[i]);
+                    playerMovesTaken.Add(validMovesPlayer[i]);
+                }
+            }
+        }
+
+        for (int i = validMovesPlayer2.Count - 1; i >= 0; i--)
+        {
+            if (validMovesPlayer2[i].Intersect(validMovesPlayer[randomNo]).Any())
+            {
+                toRemove5.Add(validMovesPlayer2[i]);
+                playerMovesTaken2.Add(validMovesPlayer2[i]);
+            }
+        }
+        validMovesPlayer2.RemoveAll(x => toRemove5.Contains(x));
+        validMovesPlayer.RemoveAll(x => toRemoveTiles.Contains(x));
+    }
+    public void printPositions()
+    {
+        string str = "";
+        for (int i = 0; i < positions2.Length; i++)
+        {
+            str += positions2[i];
+        }
+        Debug.Log(str);
+    }
+
+    public void printTiles(Dictionary<int, int> playerTiles)
+    {
+        
+        string str = "";
+        foreach (KeyValuePair<int, int> kvp in playerTiles)
+        {
+            //textBox3.Text += ("Key = {0}, Value = {1}", kvp.Key, kvp.Value);
+            str += string.Format("Key = {0}, Value = {1}", kvp.Key, kvp.Value);
+        }
+        Debug.Log(str);
+    }
+
+    public void printValidMoves()
+    {
+        int tileLength = 0;
+        foreach (int[] move in validMovesPlayerOne)
+        {
+            tileLength = move.Length;
+            switch (tileLength)
+            {
+                case 1:
+                    Debug.Log("p1 " + move[0]);
+                    break;
+                case 2:
+                    Debug.Log("p1 " + move[0] + " p2 " + move[1]);
+                    break;
+                case 3:
+                    Debug.Log("p1 " + move[0] + " p2 " + move[1] + " p3 " + move[2]);
+                    break;
+                case 4:
+                    Debug.Log("p1 " + move[0] + " p2 " + move[1] + " p3 " + move[2] + " p4 " + move[3]);
+                    break;
+            }
+
+        }
+    }
+
+    /*public void printLastInvalid()
+    {
+        int length = 0;
+        int tileLength = 0;
+        string result = "";
+        foreach (int[] move in lastInvalid)
+        {
+            length = move.Length;
+            switch (length)
+            {
+                case 1:
+                    Debug.Log("p1 " + move[0]);
+                    break;
+                case 2:
+                    Debug.Log("p1 " + move[0] + " p2 " + move[1]);
+                    break;
+                case 3:
+                    Debug.Log("p1 " + move[0] + " p2 " + move[1] + " p3 " + move[2]);
+                    break;
+                case 4:
+                    Debug.Log("p1 " + move[0] + " p2 " + move[1] + " p3 " + move[2] + " p4 " + move[3]);
+                    break;
+            }
+
+        }
+
+    }*/
+
+}
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using TMPro;
+using UnityEditor;
+using UnityEngine;
+using UnityEngine.UI;
+using Random = System.Random;
+
+public enum gameState2 { START, PLAYERONE, FROZENBLUE, FROZENRED, PLAYERTWO, END }
+
+
+public class randomScript : MonoBehaviour
+{
+
+    private int[] positions2 =
+        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+    private List<int[]> validMovesPlayerOne= new List<int[]>();
+    private List<int[]> validMovesPlayerTwo= new List<int[]>();
+    private Dictionary<int, int> playerOneTiles = new Dictionary<int, int>();
+    private Dictionary<int, int> playerTwoTiles = new Dictionary<int, int>();
+    public gameState state;
+    Random rnd = new Random();
+    List<int[]> playerOneMovesTaken = new List<int[]>();
+    List<int[]> playerTwoMovesTaken = new List<int[]>();
+    List<int[]> AllPositions = new List<int[]>();
+    private List<int[]> AllPositions2 = new List<int[]>();
+    List<int> FrozenPositions = new List<int>();
+    
+    //what i need to add today - 
+    //where should win condition be? after swap move?
+    //first thought - if all tiles are frozen - probs a draw
+    //if zero possible moves after swap chosen
+    //might have to create list of liquid placements
+
+    public void setup()
+    {
+        int startX = 0;
+        int startY = 0;
+        int length = 0;
+
+        playerOneTiles.Add(1, 2);
+        playerOneTiles.Add(2, 3);
+        playerOneTiles.Add(3, 3);
+        playerOneTiles.Add(4, 1);
+        playerTwoTiles.Add(1, 2);
+        playerTwoTiles.Add(2, 3);
+        playerTwoTiles.Add(3, 3);
+        playerTwoTiles.Add(4, 1);
+
+        for (int y = 0; y < 6; y++)
+        {
+            for (int x = 0; x < 6; x++)
+            {
+                startX = x + (y * 6);
+                startY = y + (x * 6);
+                length = x;
+                if (length < 3)
+                {
+                    AllPositions.Add(new int[] {startX, startX + 1, startX + 2, startX + 3});
+                    AllPositions.Add(new int[] {startY, startY + 6, startY + 12, startY + 18});
+
+                    AllPositions.Add(new int[] {startX, startX + 1, startX + 2});
+                    AllPositions.Add(new int[] {startY, startY + 6, startY + 12});
+
+                    AllPositions.Add(new int[] {startX, startX + 1});
+                    AllPositions.Add(new int[] {startY, startY + 6});
+
+                    AllPositions.Add(new int[] {startX});
+                    AllPositions.Add(new int[] {startY});
+
+                }
+                else if (length == 3)
+                {
+
+                    AllPositions.Add(new int[] {startX, startX + 1, startX + 2});
+                    AllPositions.Add(new int[] {startY, startY + 6, startY + 12});
+
+                    AllPositions.Add(new int[] {startX, startX + 1});
+                    AllPositions.Add(new int[] {startY, startY + 6});
+
+                    AllPositions.Add(new int[] {startX});
+                    AllPositions.Add(new int[] {startY});
+
+                }
+                else if (length == 4)
+                {
+                    AllPositions.Add(new int[] {startX, startX + 1});
+                    AllPositions.Add(new int[] {startY, startY + 6});
+
+                    AllPositions.Add(new int[] {startX});
+                    AllPositions.Add(new int[] {startY});
+                }
+                else
+                {
+
+                    AllPositions.Add(new int[] {startX});
+                    AllPositions.Add(new int[] {startY});
+
+                }
+            }
+        }
+
+        AllPositions2.AddRange(AllPositions);
+        validMovesPlayerOne.AddRange(AllPositions);
+        validMovesPlayerTwo.AddRange(AllPositions);
+    }
+
+    void Start()
+    {
+        setup();
+        //printValidMoves();
+        state = gameState.PLAYERONE;
+        buttonStart();
+
+    }
+
+    public Vector2 getCoords(int[] move)
+    {
+        int y = move[0] / 6;
+        int x = move[0] % 6;
+        return new Vector2(x, y);
+    }
+
+
+    public void buttonStart()
+    {
+        printPositions();
+        int randomNo = 0;
+        bool checkFinished = false;
+        int length = 0;
+        do
+        {
+            if (state == gameState.PLAYERONE)
+            {
+                if (isSwap(validMovesPlayerOne))
+                {
+                    Debug.Log("swap move needed");
+                    randomNo = swapMove(playerOneMovesTaken, playerOneTiles,validMovesPlayerOne,playerTwoMovesTaken,validMovesPlayerTwo);
+                }
+                else
+                {
+                    Debug.Log("Player one before: " + validMovesPlayerOne.Count);
+                    randomNo = rnd.Next(validMovesPlayerOne.Count - 1);
+                    addMoveToBoard(randomNo, validMovesPlayerOne, playerOneMovesTaken);
+                }
+
+                printPositions();
+                length = validMovesPlayerOne[randomNo].Length;
+                Debug.Log("player one start pos: "+ validMovesPlayerOne[randomNo][0]);
+                printTiles(playerOneTiles);
+                
+
+                if (tileCheck(length, playerOneTiles))
+                {
+                    removeInvalidMoves(randomNo, validMovesPlayerOne);
+                }
+                else
+                {
+                    removeInvalidMovesAndTiles(randomNo, validMovesPlayerOne, validMovesPlayerTwo);
+                }
+                
+                //Debug.Log("player 1 tiles:");
+                //printTiles(playerOneTiles);
+
+                Debug.Log("Player one after: " + validMovesPlayerOne.Count);
+
+                state = gameState.PLAYERTWO;
+
+            }
+            else // if player two
+            {
+                if (isSwap(validMovesPlayerTwo))
+                {
+                    Debug.Log("swap move needed");
+                    randomNo = swapMove(playerTwoMovesTaken, playerTwoTiles, validMovesPlayerTwo,playerOneMovesTaken,validMovesPlayerOne);
+                }
+                else
+                {
+                    Debug.Log("Player 2 before: " + validMovesPlayerTwo.Count);
+                    randomNo = rnd.Next(validMovesPlayerTwo.Count - 1);
+                    addMoveToBoard(randomNo, validMovesPlayerTwo, playerTwoMovesTaken);
+                }
+
+                //printTiles(playerTwoTiles);
+                //remove from validmoves
+                printPositions();
+                length = validMovesPlayerTwo[randomNo].Length;
+                Debug.Log("player two start pos: "+ validMovesPlayerTwo[randomNo][0]);
+                printTiles(playerTwoTiles);
+                if (tileCheck(length, playerTwoTiles))
+                {
+                    removeInvalidMoves(randomNo, validMovesPlayerTwo);
+                }
+                else
+                {
+                    removeInvalidMovesAndTiles(randomNo, validMovesPlayerTwo, validMovesPlayerOne);
+                }
+                //Debug.Log("player 2 tiles:");
+                //printTiles(playerTwoTiles);
+
+                //Debug.Log("Player two after: " + validMovesPlayerTwo.Count);
+                state = gameState.PLAYERONE;
+
+            }
+        } while (checkFinished == false);
+
+        Debug.Log("finished");
+    }
+    
+
+
+    /*public bool gameOver(Dictionary<int,int> playerTiles)
+    {
+        if (isTiles(playerTiles))
+        {
+            return true;
+        }
+        if (allTaken())
+        {
+            return true;
+        }
+        return false;
+    }*/
+
+    public int swapMove(List<int[]> playerMovesTaken, Dictionary<int, int> tileDictionary, List<int[]> playerValidMoves, List<int[]> playerMovesTaken2, List<int[]> playerValidMoves2)
+    {
+        List<int[]> potentialMoves = new List<int[]>();
+        List<int[]> rememberTiles = new List<int[]>();
+        List<int[]> tempMoves = new List<int[]>();
+        List<int> playerMovesTakenInts = FrozenPositions;
+        List<int> playerMovesTakenInts2 = FrozenPositions;
+
+        //gets move from taken moves list
+        int randomNo = rnd.Next(playerMovesTaken.Count - 1);
+        int length = playerMovesTaken[randomNo].Length;
+        removeFromBoard(playerMovesTaken[randomNo]);
+        tempMoves.AddRange(playerMovesTaken);
+        tempMoves.AddRange(playerMovesTaken2);
+        for (int i = 0; i < AllPositions2.Count; i++)
+        {
+            if (AllPositions)
+        }
+        // A tile is removed from the board which creates new possibilities, to do this we
+        //could check the whole board
+        for (int i = 0; i < playerMovesTaken.Count; i++)
+        {
+            playerMovesTakenInts.AddRange(playerMovesTaken[i]);
+        }
+        
+        for (int i = 0; i < playerMovesTaken2.Count; i++)
+        {
+            playerMovesTakenInts2.AddRange(playerMovesTaken2[i]);
+        }
+
+
+
+        //remove from player moves taken then do all positions to see if they intersect
+        //with any playerMovesTaken
+        //turn player moves taken into an array of all positions then check with allpositions
+        //to remove invalid positions
+        //get a valid move and add other moves to the board for both players
+
+        //add new valid moves onto validMoves
+        //any move that intersepts with randomno is potentially addable just needs to 
+        //be checked against 
+        //add all moves that intersept with randomno
+        //check if these moves intersept with playermovestaken for both players and add accordingly
+        
+        //i aslo need to add tile length back for tile taken out and thus if it was zero add them all back ffs i fucking hate this shit there is so much to fucking do its unreal i just wanna move onto fucking montecarlo tree search
+        //if positions[i] == length it is a potential move, if this move intersepts other moves taken then its not
+        
+        Debug.Log(AllPositions2.Count);
+        for (int i = 0; i<AllPositions2.Count;i++)
+        {
+            if (AllPositions2[i].Intersect(playerMovesTaken[randomNo]).Any() || AllPositions2[i].Length == length)
+            {
+                if (!AllPositions2[i].Intersect(playerMovesTakenInts).Any())
+                {
+                    if (AllPositions2[i].Length == length)
+                    {
+                        rememberTiles.Add(AllPositions2[i]);
+                    }
+                    else
+                    {
+                        playerValidMoves.Add(AllPositions2[i]);
+                    }
+                }
+                if (!AllPositions2[i].Intersect(playerMovesTakenInts2).Any())
+                {
+                    playerValidMoves2.Add(AllPositions2[i]);
+                }
+                //potentialMoves.Add(AllPositions[i]);
+            }
+        }
+
+        if (playerValidMoves.Count == 0)
+        {
+            if (state == gameState.PLAYERONE)
+            {
+                Debug.Log("player 1 wins");
+            }
+            else
+            {
+                Debug.Log("player 2 wins");
+            }
+            
+            state = gameState.END;
+            return 0;
+        }
+        else
+        {
+            tileDictionary[length] += 1;
+            int randomNo2 = rnd.Next(playerValidMoves.Count - 1);
+            addMoveToBoard(randomNo2, playerValidMoves, playerMovesTaken);
+            FrozenPositions.AddRange(playerValidMoves[randomNo2]);
+            //add all tiles to board
+            //playervalidmoves 
+            playerValidMoves.AddRange(rememberTiles);
+            return randomNo2;
+        }
+    }//end of swapMoves
+
+
+    public void removeFromBoard(int[] playerMovesTakenArray)
+    {
+        int length = playerMovesTakenArray.Length;
+        Debug.Log(length);
+        switch (length)
+        {
+            case 1:
+                positions2[playerMovesTakenArray[0]] = 0;
+
+                break;
+            case 2:
+                positions2[playerMovesTakenArray[0]] = 0;
+                positions2[playerMovesTakenArray[1]] = 0;
+
+                break;
+            case 3:
+                positions2[playerMovesTakenArray[0]] = 0;
+                positions2[playerMovesTakenArray[1]] = 0;
+                positions2[playerMovesTakenArray[2]] = 0;
+
+                break;
+            case 4:
+                positions2[playerMovesTakenArray[0]] = 0;
+                positions2[playerMovesTakenArray[1]] = 0;
+                positions2[playerMovesTakenArray[2]] = 0;
+                positions2[playerMovesTakenArray[3]] = 0;
+                break;
+        }
+    }
+
+    public bool allTaken()
+    {
+        for (int i = 0; i < positions2.Length; i++)
+        {
+            if (positions2[i] == 0)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public bool isSwap(List<int[]> validMovesPlayer)
+    {
+        if (validMovesPlayer.Count == 0)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    public void printMove(int randomNo)
+    {
+        int tileLength = validMovesPlayerOne[randomNo].Length;
+        switch (tileLength)
+        {
+            case 1:
+                Debug.Log("p1 " + validMovesPlayerOne[randomNo][0]);
+                break;
+            case 2:
+                Debug.Log("p1 " + validMovesPlayerOne[randomNo][0] + " p2 " + validMovesPlayerOne[randomNo][1]);
+                break;
+            case 3:
+                Debug.Log("p1 " + validMovesPlayerOne[randomNo][0] + " p2 " + validMovesPlayerOne[randomNo][1] + " p3 " + validMovesPlayerOne[randomNo][2]);
+                break;
+            case 4:
+                Debug.Log("p1 " + validMovesPlayerOne[randomNo][0] + " p2 " + validMovesPlayerOne[randomNo][1] + " p3 " + validMovesPlayerOne[randomNo][2] + " p4 " + validMovesPlayerOne[randomNo][3]);
+                break;
+        }
+    }
+
+    public void addMoveToBoard(int randomNo, List<int[]> validMovesPlayer, List<int[]> playerMovesTaken)
+    {
+        int length = validMovesPlayer[randomNo].Length;
+        Debug.Log(length);
+        switch (length)
+        {
+            case 1:
+                positions2[validMovesPlayer[randomNo][0]] = 1;
+
+                break;
+            case 2:
+                positions2[validMovesPlayer[randomNo][0]] = 1;
+                positions2[validMovesPlayer[randomNo][1]] = 1;
+
+                break;
+            case 3:
+                positions2[validMovesPlayer[randomNo][0]] = 1;
+                positions2[validMovesPlayer[randomNo][1]] = 1;
+                positions2[validMovesPlayer[randomNo][2]] = 1;
+
+                break;
+            case 4:
+                positions2[validMovesPlayer[randomNo][0]] = 1;
+                positions2[validMovesPlayer[randomNo][1]] = 1;
+                positions2[validMovesPlayer[randomNo][2]] = 1;
+                positions2[validMovesPlayer[randomNo][3]] = 1;
+
+                break;
+        }
+        playerMovesTaken.Add(validMovesPlayer[randomNo]);
+
+    }
+
+    private bool tileCheck(int length, Dictionary<int,int> playerTiles)
+    {
+        if (playerTiles[length] == 1)
+        {
+            return false;
+        }
+        else
+        {
+            playerTiles[length] -= 1;
+            return true;
+        }
+    }
+
+    public void removeInvalidMoves(int randomNo, List<int[]> validMovesPlayer)
+    {
+        List<int[]> toRemove2 = new List<int[]>();
+        List<int[]> toRemove3 = new List<int[]>();
+
+        for (int i = validMovesPlayerOne.Count - 1; i >= 0; i--)
+        {
+            if (validMovesPlayerOne[i].Intersect(validMovesPlayer[randomNo]).Any())
+            {
+                toRemove2.Add(validMovesPlayerOne[i]);
+            }
+        }
+
+        for (int i = validMovesPlayerTwo.Count - 1; i >= 0; i--)
+        {
+            if (validMovesPlayerTwo[i].Intersect(validMovesPlayer[randomNo]).Any())
+            {
+                toRemove3.Add(validMovesPlayerTwo[i]);
+            }
+        }
+        validMovesPlayerOne.RemoveAll(x => toRemove2.Contains(x));
+        validMovesPlayerTwo.RemoveAll(x => toRemove3.Contains(x));
+    }
+
+    public void removeInvalidMovesAndTiles(int randomNo, List<int[]> validMovesPlayer, List<int[]> validMovesPlayer2)
+    {
+        List<int[]> toRemove5 = new List<int[]>();
+        List<int[]> toRemoveTiles = new List<int[]>();
+        for (int i = validMovesPlayer.Count - 1; i >= 0; i--)
+        {
+            if (validMovesPlayer[i].Length == validMovesPlayer[randomNo].Length)
+            {
+                toRemoveTiles.Add(validMovesPlayer[i]);
+            }
+            else
+            {
+                if (validMovesPlayer[i].Intersect(validMovesPlayer[randomNo]).Any())
+                {
+                    toRemoveTiles.Add(validMovesPlayer[i]);
+                }
+            }
+        }
+
+        for (int i = validMovesPlayer2.Count - 1; i >= 0; i--)
+        {
+            if (validMovesPlayer2[i].Intersect(validMovesPlayer[randomNo]).Any())
+            {
+                toRemove5.Add(validMovesPlayer2[i]);
+            }
+        }
+        validMovesPlayer2.RemoveAll(x => toRemove5.Contains(x));
+        validMovesPlayer.RemoveAll(x => toRemoveTiles.Contains(x));
+    }
+    public void printPositions()
+    {
+        string str = "";
+        for (int i = 0; i < positions2.Length; i++)
+        {
+            str += positions2[i];
+        }
+        Debug.Log(str);
+    }
+
+    public void printTiles(Dictionary<int, int> playerTiles)
+    {
+        
+        string str = "";
+        foreach (KeyValuePair<int, int> kvp in playerTiles)
+        {
+            //textBox3.Text += ("Key = {0}, Value = {1}", kvp.Key, kvp.Value);
+            str += string.Format("Key = {0}, Value = {1}", kvp.Key, kvp.Value);
+        }
+        Debug.Log(str);
+    }
+
+    public void printValidMoves()
+    {
+        int tileLength = 0;
+        foreach (int[] move in validMovesPlayerOne)
+        {
+            tileLength = move.Length;
+            switch (tileLength)
+            {
+                case 1:
+                    Debug.Log("p1 " + move[0]);
+                    break;
+                case 2:
+                    Debug.Log("p1 " + move[0] + " p2 " + move[1]);
+                    break;
+                case 3:
+                    Debug.Log("p1 " + move[0] + " p2 " + move[1] + " p3 " + move[2]);
+                    break;
+                case 4:
+                    Debug.Log("p1 " + move[0] + " p2 " + move[1] + " p3 " + move[2] + " p4 " + move[3]);
+                    break;
+            }
+
+        }
+    }
+
+    /*public void printLastInvalid()
+    {
+        int length = 0;
+        int tileLength = 0;
+        string result = "";
+        foreach (int[] move in lastInvalid)
+        {
+            length = move.Length;
+            switch (length)
+            {
+                case 1:
+                    Debug.Log("p1 " + move[0]);
+                    break;
+                case 2:
+                    Debug.Log("p1 " + move[0] + " p2 " + move[1]);
+                    break;
+                case 3:
+                    Debug.Log("p1 " + move[0] + " p2 " + move[1] + " p3 " + move[2]);
+                    break;
+                case 4:
+                    Debug.Log("p1 " + move[0] + " p2 " + move[1] + " p3 " + move[2] + " p4 " + move[3]);
+                    break;
+            }
+
+        }
+
+    }*/
+    
+      public void addTo(Vector2 first, Vector2 second)
+      {
+          int ycoord = (int)(first.y + 2.5);
+          int xcoord = (int)(first.x + 2.5);
+  
+  
+          int coordinates = (int)first.y * 6;
+          for (int i = 0; i < first.x; i++)
+          {
+              position[coordinates + i] = 1;
+          }
+      }
+
+}
